@@ -7,5 +7,8 @@ module.exports = {
     instances: 1,
     autorestart: true,
     max_memory_restart: "512M",
+    error_file: "/www/wwwlogs/automation-factory.error.log",
+    out_file: "/www/wwwlogs/automation-factory.out.log",
+    time: true,
   }],
 };
