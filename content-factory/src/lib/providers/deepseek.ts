@@ -17,13 +17,13 @@ function client() {
 export function createDeepSeekProviders(): AiProviders {
   return {
     text: {
-      async generateContentPack({ topic, brief }) {
+      async generateContentPack({ topic, brief, systemPrompt, userPrompt }) {
         const response = await client().chat.completions.create({
           model: process.env.DEEPSEEK_TEXT_MODEL ?? "deepseek-chat",
           response_format: { type: "json_object" },
           messages: [
-            { role: "system", content: "Return JSON only: title, script, storyboard with exactly four strings." },
-            { role: "user", content: "Topic: " + topic + "\nBrief: " + (brief || "none") },
+            { role: "system", content: systemPrompt || "Return JSON only: title, script, storyboard with exactly four strings." },
+            { role: "user", content: userPrompt || "Topic: " + topic + "\nBrief: " + (brief || "none") },
           ],
         });
         const content = response.choices[0]?.message.content;

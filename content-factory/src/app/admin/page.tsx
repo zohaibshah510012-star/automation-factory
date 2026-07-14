@@ -1,0 +1,10 @@
+"use client";
+import { useEffect, useState } from "react";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+type Overview = { users: number; creditsUsed: number; tasks: { id: string; status: string }[]; providers: { provider_name: string; enabled: boolean; model: string | null }[] };
+export default function AdminPage() {
+  const [data, setData] = useState<Overview | null>(null); const [error, setError] = useState("");
+  useEffect(() => { void (async () => { const client = getSupabaseBrowserClient(); const token = (await client?.auth.getSession())?.data.session?.access_token; if (!token) return setError("请使用管理员账号登录。"); const response = await fetch("/api/admin/overview", { headers: { Authorization: `Bearer ${token}` } }); if (!response.ok) return setError("当前账号没有管理员权限。"); setData(await response.json()); })(); }, []);
+  return <main className="mx-auto max-w-6xl p-8"><p className="text-sm text-muted-foreground">Automation Factory / Internal</p><h1 className="mt-2 text-3xl font-semibold">Admin Console</h1>{error ? <p className="mt-6 text-destructive">{error}</p> : null}{data ? <div className="mt-8 grid gap-5 md:grid-cols-3"><section className="rounded-xl border p-5"><p className="text-sm text-muted-foreground">用户数</p><p className="text-3xl font-semibold">{data.users}</p></section><section className="rounded-xl border p-5"><p className="text-sm text-muted-foreground">Credits 消耗</p><p className="text-3xl font-semibold">{data.creditsUsed}</p></section><section className="rounded-xl border p-5"><p className="text-sm text-muted-foreground">最近任务</p><p className="text-3xl font-semibold">{data.tasks.length}</p></section><section className="rounded-xl border p-5 md:col-span-3"><h2 className="font-semibold">AI Providers</h2><ul className="mt-3 grid gap-2 sm:grid-cols-2">{data.providers.map((provider) => <li className="rounded-lg bg-muted p-3" key={provider.provider_name}>{provider.provider_name} · {provider.enabled ? "enabled" : "disabled"} · {provider.model ?? "未配置模型"}</li>)}</ul></section></div> : !error ? <p className="mt-6 text-muted-foreground">正在加载内部状态…</p> : null}</main>;
+}

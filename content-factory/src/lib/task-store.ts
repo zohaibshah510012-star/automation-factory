@@ -6,6 +6,7 @@ import {
   getOpenAiNetworkDiagnostics,
 } from "@/lib/ai-providers";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { resolvePublishedPrompt, type TaskType } from "@/lib/prompt-engine";
 import type { ContentTask } from "@/lib/types";
 
 const taskStore = new Map<string, ContentTask>();
@@ -42,6 +43,9 @@ taskStore.set("demo-content-factory", seedTask());
 type DatabaseTask = {
   id: string;
   project_id: string | null;
+  user_id?: string | null;
+  task_type?: TaskType;
+  credits_charged?: number;
   topic: string;
   brief: string | null;
   status: ContentTask["status"];
@@ -57,8 +61,11 @@ type DatabaseTask = {
 function taskFromDatabase(row: DatabaseTask): ContentTask {
   return {
     id: row.id,
+    userId: row.user_id ?? undefined,
     topic: row.topic,
     brief: row.brief ?? undefined,
+    taskType: row.task_type ?? "short_video_script",
+    creditsCharged: row.credits_charged ?? 0,
     status: row.status,
     title: row.title ?? undefined,
     script: row.script ?? undefined,
@@ -76,8 +83,11 @@ async function syncTask(task: ContentTask) {
 
   await supabase.from("content_tasks").upsert({
     id: task.id,
+    user_id: task.userId ?? null,
     topic: task.topic,
     brief: task.brief ?? null,
+    task_type: task.taskType ?? "short_video_script",
+    credits_charged: task.creditsCharged ?? 0,
     status: task.status,
     title: task.title ?? null,
     script: task.script ?? null,
@@ -135,32 +145,50 @@ async function syncGenerationStatus(task: ContentTask) {
   }, { onConflict: "content_task_id,stage" });
 }
 
-export async function listTasks(): Promise<ContentTask[]> {
+export async function listTasks(userId?: string): Promise<ContentTask[]> {
   const supabase = getSupabaseServerClient();
   if (supabase) {
-    const { data, error } = await supabase
+    let query = supabase
       .from("content_tasks")
       .select("*, assets(id, type, name, url, provider)")
       .order("updated_at", { ascending: false });
+    if (userId) query = query.eq("user_id", userId);
+    const { data, error } = await query;
     if (!error && data) return (data as DatabaseTask[]).map(taskFromDatabase);
   }
 
   return [...taskStore.values()].toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-export async function createTask(input: { topic: string; brief?: string }): Promise<ContentTask> {
+async function reserveCredits(task: ContentTask) {
+  const supabase = getSupabaseServerClient();
+  if (!supabase || !task.userId) throw new Error("BILLING_CONFIGURATION_REQUIRED");
+  const { data: agent } = await supabase.from("agents").select("credit_cost,provider_name,model").eq("agent_name", "Text Agent").eq("enabled", true).maybeSingle();
+  const amount = agent?.credit_cost ?? 25;
+  const { error } = await supabase.rpc("consume_credits", { p_user_id: task.userId, p_amount: amount, p_reason: `generation:${task.taskType}`, p_task_id: task.id });
+  if (error) throw new Error(error.message.includes("INSUFFICIENT_CREDITS") ? "INSUFFICIENT_CREDITS" : "CREDIT_RESERVATION_FAILED");
+  task.creditsCharged = amount;
+  await supabase.from("usage_history").insert({ user_id: task.userId, content_task_id: task.id, capability: task.taskType ?? "short_video_script", provider: agent?.provider_name, model: agent?.model, credits_charged: amount });
+}
+
+export async function createTask(input: { topic: string; brief?: string; userId: string; taskType: TaskType; promptId?: string }): Promise<ContentTask> {
   const createdAt = timestamp();
   const task: ContentTask = {
     id: crypto.randomUUID(),
+    userId: input.userId,
     topic: input.topic,
     brief: input.brief,
+    taskType: input.taskType,
+    promptId: input.promptId,
     status: "pending",
     assets: [],
     createdAt,
     updatedAt: createdAt,
   };
-  taskStore.set(task.id, task);
   await syncTask(task);
+  await reserveCredits(task);
+  await syncTask(task);
+  taskStore.set(task.id, task);
   await syncGenerationStatus(task);
   return task;
 }
@@ -175,8 +203,8 @@ export async function runTask(taskId: string) {
   await syncGenerationStatus(task);
 
   try {
-    const providers = getAiProviders();
-    const content = await providers.text.generateContentPack(task);
+    const [providers, prompt] = await Promise.all([Promise.resolve(getAiProviders()), resolvePublishedPrompt({ taskType: task.taskType ?? "short_video_script", topic: task.topic, brief: task.brief, userId: task.userId, promptId: task.promptId })]);
+    const content = await providers.text.generateContentPack({ ...task, systemPrompt: prompt.systemPrompt, userPrompt: prompt.userPrompt });
 
     task.title = content.title;
     task.script = content.script;

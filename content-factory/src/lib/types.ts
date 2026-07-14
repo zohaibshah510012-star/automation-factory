@@ -10,8 +10,12 @@ export type ContentAsset = {
 
 export type ContentTask = {
   id: string;
+  userId?: string;
   topic: string;
   brief?: string;
+  taskType?: "marketing" | "short_video_script" | "video" | "image" | "drama" | "ecommerce" | "social";
+  promptId?: string;
+  creditsCharged?: number;
   status: TaskStatus;
   title?: string;
   script?: string;

@@ -3,7 +3,7 @@ import type { ContentAsset, ContentPack } from "@/lib/types";
 export type GeneratedTextContent = Required<Omit<ContentPack, "assets">>;
 
 export interface TextProvider {
-  generateContentPack(input: { topic: string; brief?: string }): Promise<GeneratedTextContent>;
+  generateContentPack(input: { topic: string; brief?: string; systemPrompt?: string; userPrompt?: string }): Promise<GeneratedTextContent>;
 }
 
 export interface ImageProvider {

@@ -14,7 +14,9 @@ Set these only in the cloud provider's encrypted environment-variable settings. 
 | Variable | Required when | Purpose |
 | --- | --- | --- |
 | NEXT_PUBLIC_SUPABASE_URL | Always for persistence | Supabase project URL |
+| NEXT_PUBLIC_SUPABASE_ANON_KEY | Always for customer authentication | Supabase publishable/anon key |
 | SUPABASE_SERVICE_ROLE_KEY | Always for persistence | Server-only task and result writes |
+| ADMIN_EMAILS | Required to bootstrap the first admin | Comma-separated administrator emails |
 | AI_PROVIDER | Always | openai, gemini, deepseek, alternative, or local |
 | DEEPSEEK_API_KEY | AI_PROVIDER=deepseek | DeepSeek text generation |
 | DEEPSEEK_BASE_URL | Optional | Defaults to https://api.deepseek.com |

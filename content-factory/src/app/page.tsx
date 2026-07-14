@@ -1,349 +1,65 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  ArrowUpRightIcon,
-  CheckCircle2Icon,
-  Clock3Icon,
-  FilmIcon,
-  FolderOpenIcon,
-  LayoutDashboardIcon,
-  LoaderCircleIcon,
-  PlusIcon,
-  SparklesIcon,
-  WandSparklesIcon,
-} from "lucide-react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import { ArrowRight, Copy, LogOut, Sparkles } from "lucide-react";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import type { ContentTask } from "@/lib/types";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Textarea } from "@/components/ui/textarea";
-import type { ContentTask, TaskStatus } from "@/lib/types";
+type Prompt = { id: string; name: string; category: string; owner_type: "platform" | "user" | "company"; system_prompt: string; user_template: string; version: number };
+type SessionState = { token: string; email: string; userId: string };
+const taskTypes = [
+  ["short_video_script", "短视频脚本"], ["marketing", "营销方案"], ["ecommerce", "电商内容"], ["social", "社媒内容"], ["drama", "短剧策划"],
+] as const;
 
-const navItems = [
-  { label: "Dashboard", icon: LayoutDashboardIcon },
-  { label: "Content Tasks", icon: SparklesIcon },
-  { label: "Assets", icon: FolderOpenIcon },
-  { label: "Results", icon: FilmIcon },
-];
+export default function CustomerApp() {
+  const client = getSupabaseBrowserClient();
+  const [session, setSession] = useState<SessionState | null>(null);
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [message, setMessage] = useState("");
+  const [tasks, setTasks] = useState<ContentTask[]>([]); const [prompts, setPrompts] = useState<Prompt[]>([]);
+  const [credits, setCredits] = useState<number | null>(null); const [topic, setTopic] = useState(""); const [brief, setBrief] = useState("");
+  const [taskType, setTaskType] = useState<(typeof taskTypes)[number][0]>("short_video_script"); const [promptId, setPromptId] = useState(""); const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState<Prompt | null>(null); const [systemPrompt, setSystemPrompt] = useState(""); const [userTemplate, setUserTemplate] = useState("");
 
-const statusCopy: Record<TaskStatus, string> = {
-  pending: "等待生成",
-  generating: "正在生成",
-  completed: "已完成",
-  failed: "生成失败",
-};
+  const headers = useMemo<Record<string, string>>(() => session ? { Authorization: `Bearer ${session.token}`, "Content-Type": "application/json" } : ({} as Record<string, string>), [session]);
+  const refresh = useCallback(async () => {
+    if (!session || !client) return;
+    const [taskResponse, promptResponse, profileResponse] = await Promise.all([
+      fetch("/api/tasks", { headers, cache: "no-store" }), fetch("/api/prompts", { headers, cache: "no-store" }), client.from("profiles").select("credits_balance").eq("id", session.userId).maybeSingle(),
+    ]);
+    if (taskResponse.ok) setTasks((await taskResponse.json()).tasks);
+    if (promptResponse.ok) { const available = (await promptResponse.json()).prompts as Prompt[]; setPrompts(available); if (!promptId) setPromptId(available.find((item) => item.name === "short_video_script_prompt")?.id ?? available[0]?.id ?? ""); }
+    setCredits(profileResponse.data?.credits_balance ?? null);
+  }, [client, headers, promptId, session]);
 
-function statusVariant(status: TaskStatus) {
-  if (status === "completed") return "secondary";
-  if (status === "failed") return "destructive";
-  if (status === "generating") return "outline";
-  return "ghost";
-}
+  useEffect(() => { if (!client) return; void client.auth.getSession().then(({ data }) => { const current = data.session; if (current?.access_token) setSession({ token: current.access_token, email: current.user.email ?? "", userId: current.user.id }); }); }, [client]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
-function statusIcon(status: TaskStatus) {
-  if (status === "completed") return <CheckCircle2Icon data-icon="inline-start" />;
-  if (status === "generating") return <LoaderCircleIcon data-icon="inline-start" />;
-  return <Clock3Icon data-icon="inline-start" />;
-}
-
-export default function Home() {
-  const [tasks, setTasks] = useState<ContentTask[]>([]);
-  const [topic, setTopic] = useState("");
-  const [brief, setBrief] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState("");
-
-  const refreshTasks = useCallback(async () => {
-    const response = await fetch("/api/tasks", { cache: "no-store" });
-    if (!response.ok) return;
-    const data = (await response.json()) as { tasks: ContentTask[] };
-    setTasks(data.tasks);
-  }, []);
-
-  useEffect(() => {
-    const initialLoad = window.setTimeout(() => void refreshTasks(), 0);
-    const interval = window.setInterval(() => void refreshTasks(), 1800);
-    return () => {
-      window.clearTimeout(initialLoad);
-      window.clearInterval(interval);
-    };
-  }, [refreshTasks]);
-
-  const stats = useMemo(
-    () => ({
-      total: tasks.length,
-      active: tasks.filter((task) => task.status === "generating").length,
-      ready: tasks.filter((task) => task.status === "completed").length,
-      assets: tasks.reduce((count, task) => count + task.assets.length, 0),
-    }),
-    [tasks],
-  );
-
-  const latestResult = useMemo(
-    () => tasks.find((task) => task.status === "completed" && task.title && task.script && task.storyboard),
-    [tasks],
-  );
-
-  async function createTask(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!topic.trim()) return;
-
-    setIsCreating(true);
-    setError("");
-    try {
-      const response = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topic.trim(), brief: brief.trim() }),
-      });
-      if (!response.ok) throw new Error("任务创建失败，请重试。");
-
-      setTopic("");
-      setBrief("");
-      await refreshTasks();
-    } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "任务创建失败。");
-    } finally {
-      setIsCreating(false);
-    }
+  async function authenticate(event: FormEvent) {
+    event.preventDefault(); if (!client) return; setLoading(true); setMessage("");
+    const result = mode === "login" ? await client.auth.signInWithPassword({ email, password }) : await client.auth.signUp({ email, password });
+    setLoading(false); if (result.error) return setMessage(result.error.message);
+    if (!result.data.session) return setMessage("注册成功，请在邮箱完成验证后登录。");
+    setSession({ token: result.data.session.access_token, email: result.data.session.user.email ?? email, userId: result.data.session.user.id });
   }
 
-  return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex min-h-screen max-w-7xl">
-        <aside className="hidden w-60 shrink-0 border-r bg-sidebar px-5 py-6 lg:flex lg:flex-col">
-          <div className="flex items-center gap-3 px-2">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <WandSparklesIcon aria-hidden="true" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold tracking-tight">Content Factory</p>
-              <p className="text-xs text-muted-foreground">MVP workspace</p>
-            </div>
-          </div>
-          <nav className="mt-10 flex flex-col gap-1">
-            {navItems.map(({ label, icon: Icon }, index) => (
-              <Button
-                className="justify-start"
-                key={label}
-                variant={index === 0 ? "secondary" : "ghost"}
-              >
-                <Icon data-icon="inline-start" />
-                {label}
-              </Button>
-            ))}
-          </nav>
-          <div className="mt-auto rounded-xl border bg-card p-4">
-            <p className="text-sm font-medium">MVP 生成引擎</p>
-            <p className="mt-1 text-xs leading-5 text-muted-foreground">
-              当前使用本地演示 Provider，可随时替换为正式模型服务。
-            </p>
-          </div>
-        </aside>
+  async function createTask(event: FormEvent) {
+    event.preventDefault(); if (!topic.trim()) return; setLoading(true); setMessage("");
+    const response = await fetch("/api/tasks", { method: "POST", headers, body: JSON.stringify({ topic, brief, taskType, promptId }) });
+    const payload = await response.json(); setLoading(false);
+    if (!response.ok) return setMessage(payload.error === "INSUFFICIENT_CREDITS" ? "Credits 不足，暂不能生成。" : payload.error || "创建失败。");
+    setTopic(""); setBrief(""); await refresh();
+  }
 
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex min-h-18 items-center justify-between border-b px-5 py-4 sm:px-8">
-            <div className="flex items-center gap-3 lg:hidden">
-              <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <WandSparklesIcon aria-hidden="true" />
-              </div>
-              <span className="text-sm font-semibold">Content Factory</span>
-            </div>
-            <div className="hidden lg:block">
-              <p className="text-sm font-medium">内容自动化控制台</p>
-              <p className="text-xs text-muted-foreground">主题 → 内容包 → 视频成片</p>
-            </div>
-            <Badge variant="outline">MVP / 本地演示模式</Badge>
-          </header>
+  async function savePersonalPrompt() {
+    if (!editing) return; setLoading(true);
+    const response = await fetch("/api/prompts", { method: "POST", headers, body: JSON.stringify({ sourceId: editing.id, name: `${editing.name}_personal`, systemPrompt, userTemplate }) });
+    setLoading(false); if (!response.ok) return setMessage("保存个人 Prompt 失败。"); setMessage("已保存为个人 Prompt 版本。"); setEditing(null); await refresh();
+  }
 
-          <div className="flex flex-1 flex-col gap-7 p-5 sm:p-8">
-            <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(20rem,.8fr)]">
-              <div>
-                <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                  把一个主题变成一条完整内容
-                </h1>
-                <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
-                  自动生成标题、短视频脚本、分镜、图片素材和配音任务；视频渲染接口已就绪，后续可直接接入 Remotion 或云渲染。
-                </p>
-              </div>
-              <Card className="border-primary/20 bg-secondary/50">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">本轮生成内容</CardTitle>
-                  <CardDescription>适合 30–60 秒中文口播短视频</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {["标题", "脚本", "分镜", "图片素材", "配音"].map((item) => (
-                      <Badge key={item} variant="outline">{item}</Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
+  if (!client) return <main className="grid min-h-screen place-items-center p-6"><section className="max-w-md rounded-2xl border p-7"><h1 className="text-2xl font-semibold">需要完成用户认证配置</h1><p className="mt-3 text-sm text-muted-foreground">请设置 NEXT_PUBLIC_SUPABASE_ANON_KEY 后启用注册、登录与个人 Prompt。</p></section></main>;
+  if (!session) return <main className="grid min-h-screen place-items-center bg-muted/30 p-6"><form onSubmit={authenticate} className="w-full max-w-md rounded-2xl border bg-background p-7 shadow-sm"><div className="flex items-center gap-2"><span className="grid size-9 place-items-center rounded-lg bg-primary text-primary-foreground"><Sparkles size={18}/></span><h1 className="text-xl font-semibold">Automation Factory</h1></div><h2 className="mt-8 text-2xl font-semibold">{mode === "login" ? "登录工作台" : "创建账号"}</h2><p className="mt-2 text-sm text-muted-foreground">用 Credits 驱动可追踪的内容生产。</p><input className="mt-6 w-full rounded-lg border px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="邮箱" type="email" required/><input className="mt-3 w-full rounded-lg border px-3 py-2" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="密码（至少 6 位）" type="password" minLength={6} required/><button className="mt-5 w-full rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground disabled:opacity-60" disabled={loading}>{loading ? "处理中…" : mode === "login" ? "登录" : "注册"}</button><button className="mt-4 text-sm text-muted-foreground underline" type="button" onClick={() => setMode(mode === "login" ? "signup" : "login")}>{mode === "login" ? "没有账号？注册" : "已有账号？登录"}</button>{message ? <p className="mt-4 text-sm text-destructive">{message}</p> : null}</form></main>;
 
-            <Card>
-              <CardHeader>
-                <CardTitle>新建内容任务</CardTitle>
-                <CardDescription>填写主题后自动启动内容生产流程。</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="flex flex-col gap-4" onSubmit={createTask}>
-                  <Input
-                    aria-label="内容主题"
-                    onChange={(event) => setTopic(event.target.value)}
-                    placeholder="例如：为什么 AI 自动化能帮小团队提升效率？"
-                    value={topic}
-                  />
-                  <Textarea
-                    aria-label="补充要求"
-                    className="min-h-22 resize-none"
-                    onChange={(event) => setBrief(event.target.value)}
-                    placeholder="补充目标受众、语气或产品卖点（可选）"
-                    value={brief}
-                  />
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs text-muted-foreground">生成会在后台进行，可继续创建其他任务。</p>
-                    <Button disabled={isCreating || !topic.trim()} type="submit">
-                      <PlusIcon data-icon="inline-start" />
-                      {isCreating ? "正在创建…" : "开始生成"}
-                    </Button>
-                  </div>
-                  {error ? <p className="text-sm text-destructive">{error}</p> : null}
-                </form>
-              </CardContent>
-            </Card>
-
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {[
-                ["内容任务", stats.total, SparklesIcon],
-                ["生成中", stats.active, LoaderCircleIcon],
-                ["可用结果", stats.ready, CheckCircle2Icon],
-                ["素材资产", stats.assets, FolderOpenIcon],
-              ].map(([label, value, Icon]) => {
-                const StatIcon = Icon as typeof SparklesIcon;
-                return (
-                  <Card key={label as string}>
-                    <CardContent className="flex items-center justify-between p-5">
-                      <div>
-                        <p className="text-sm text-muted-foreground">{label as string}</p>
-                        <p className="mt-1 text-2xl font-semibold">{value as number}</p>
-                      </div>
-                      <StatIcon className="text-muted-foreground" aria-hidden="true" />
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </section>
-
-            <section className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(19rem,.65fr)]">
-              <Card>
-                <CardHeader className="flex-row items-start justify-between gap-4">
-                  <div>
-                    <CardTitle>Content Tasks</CardTitle>
-                    <CardDescription>实时查看内容生产状态。</CardDescription>
-                  </div>
-                  <Button onClick={() => void refreshTasks()} size="sm" variant="outline">刷新</Button>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>主题</TableHead>
-                        <TableHead>状态</TableHead>
-                        <TableHead className="hidden sm:table-cell">更新时间</TableHead>
-                        <TableHead className="text-right">结果</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {tasks.map((task) => (
-                        <TableRow key={task.id}>
-                          <TableCell className="max-w-52">
-                            <p className="truncate font-medium">{task.topic}</p>
-                            <p className="mt-1 truncate text-xs text-muted-foreground">{task.status === "failed" ? task.error : (task.title ?? "正在创建内容包")}</p>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={statusVariant(task.status)}>
-                              {statusIcon(task.status)}
-                              {statusCopy[task.status]}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="hidden text-muted-foreground sm:table-cell">
-                            {new Intl.DateTimeFormat("zh-CN", { hour: "2-digit", minute: "2-digit" }).format(new Date(task.updatedAt))}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {task.status === "completed" ? (
-                              <Button size="sm" variant="ghost">
-                                查看
-                                <ArrowUpRightIcon data-icon="inline-end" />
-                              </Button>
-                            ) : "—"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                  {latestResult ? (
-                    <div className="mt-6 flex flex-col gap-4 rounded-lg bg-muted/40 p-4">
-                      <div>
-                        <p className="text-xs font-medium text-muted-foreground">LATEST CONTENT PACK</p>
-                        <h3 className="mt-1 text-base font-semibold">{latestResult.title}</h3>
-                      </div>
-                      <p className="text-sm leading-6 text-muted-foreground">{latestResult.script}</p>
-                      <ol className="flex list-decimal flex-col gap-1 pl-5 text-sm text-muted-foreground">
-                        {latestResult.storyboard?.map((scene) => <li key={scene}>{scene}</li>)}
-                      </ol>
-                    </div>
-                  ) : null}
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Generation Pipeline</CardTitle>
-                  <CardDescription>当前任务按固定且可追踪的流程执行。</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-5">
-                  {[
-                    ["选题与标题", "文本 Provider"],
-                    ["脚本与分镜", "文本 Provider"],
-                    ["图片素材", "图片 Provider"],
-                    ["配音任务", "语音 Provider"],
-                    ["视频成片", "Renderer 接口预留"],
-                  ].map(([label, provider], index) => (
-                    <div className="flex gap-3" key={label}>
-                      <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold">{index + 1}</div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-medium">{label}</p>
-                          <span className="text-xs text-muted-foreground">{provider}</span>
-                        </div>
-                        <Progress className="mt-2" value={index < 4 ? 100 : 12} />
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </section>
-          </div>
-        </div>
-      </div>
-    </main>
-  );
+  const latest = tasks.find((task) => task.status === "completed");
+  return <main className="min-h-screen bg-muted/20"><header className="border-b bg-background"><div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4"><div><p className="font-semibold">Automation Factory</p><p className="text-xs text-muted-foreground">Customer workspace</p></div><div className="flex items-center gap-3 text-sm"><span className="rounded-full bg-muted px-3 py-1">{credits ?? "–"} Credits</span><a href="/admin" className="text-muted-foreground hover:text-foreground">Admin</a><button onClick={() => void client.auth.signOut().then(() => setSession(null))} title="退出登录"><LogOut size={18}/></button></div></div></header><div className="mx-auto grid max-w-7xl gap-6 p-5 lg:grid-cols-[1.25fr_.75fr]"><section className="space-y-6"><div><p className="text-sm text-muted-foreground">{session.email}</p><h1 className="mt-1 text-3xl font-semibold tracking-tight">把需求变成可复用内容资产</h1></div><form onSubmit={createTask} className="rounded-2xl border bg-background p-5"><label className="text-sm font-medium">内容需求</label><input className="mt-2 w-full rounded-lg border px-3 py-2" value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="例如：AI 自动化如何帮助小团队增长" required/><textarea className="mt-3 min-h-24 w-full rounded-lg border p-3" value={brief} onChange={(e) => setBrief(e.target.value)} placeholder="目标用户、语气或产品卖点（可选）"/><div className="mt-3 grid gap-3 sm:grid-cols-2"><select className="rounded-lg border p-2" value={taskType} onChange={(e) => setTaskType(e.target.value as typeof taskType)}>{taskTypes.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select><select className="rounded-lg border p-2" value={promptId} onChange={(e) => setPromptId(e.target.value)}>{prompts.map((prompt) => <option key={prompt.id} value={prompt.id}>{prompt.owner_type === "platform" ? "官方" : "我的"} · {prompt.name} v{prompt.version}</option>)}</select></div><button disabled={loading || !topic.trim()} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground disabled:opacity-60">开始生成 <ArrowRight size={16}/></button>{message ? <p className="mt-3 text-sm text-destructive">{message}</p> : null}</form><section className="rounded-2xl border bg-background p-5"><h2 className="font-semibold">生成历史</h2><div className="mt-3 divide-y">{tasks.map((task) => <article className="py-3" key={task.id}><div className="flex justify-between gap-3"><p className="font-medium">{task.topic}</p><span className="text-sm text-muted-foreground">{task.status}</span></div><p className="mt-1 text-sm text-muted-foreground">{task.title || task.error || "等待生成结果"}</p></article>)}{!tasks.length ? <p className="py-6 text-sm text-muted-foreground">还没有内容任务。</p> : null}</div></section>{latest ? <section className="rounded-2xl border bg-background p-5"><h2 className="font-semibold">最新内容包：{latest.title}</h2><p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-muted-foreground">{latest.script}</p><ol className="mt-3 list-decimal space-y-1 pl-5 text-sm">{latest.storyboard?.map((scene) => <li key={scene}>{scene}</li>)}</ol></section> : null}</section><aside className="space-y-6"><section className="rounded-2xl border bg-background p-5"><h2 className="font-semibold">我的 Prompt Library</h2><p className="mt-1 text-sm text-muted-foreground">官方模板可复制为个人版本，再用于生成。</p><div className="mt-4 space-y-3">{prompts.map((prompt) => <div className="rounded-lg border p-3" key={prompt.id}><div className="flex items-start justify-between gap-2"><div><p className="text-sm font-medium">{prompt.name}</p><p className="text-xs text-muted-foreground">{prompt.owner_type} · v{prompt.version}</p></div><button className="text-sm text-primary" onClick={() => { setEditing(prompt); setSystemPrompt(prompt.system_prompt); setUserTemplate(prompt.user_template); }}><Copy size={15}/></button></div></div>)}</div></section>{editing ? <section className="rounded-2xl border bg-background p-5"><h2 className="font-semibold">编辑个人 Prompt</h2><textarea className="mt-3 min-h-36 w-full rounded-lg border p-3 text-sm" value={systemPrompt} onChange={(e) => setSystemPrompt(e.target.value)}/><textarea className="mt-3 min-h-24 w-full rounded-lg border p-3 text-sm" value={userTemplate} onChange={(e) => setUserTemplate(e.target.value)}/><button className="mt-3 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground" disabled={loading} onClick={() => void savePersonalPrompt()}>保存个人版本</button></section> : null}</aside></div></main>;
 }
