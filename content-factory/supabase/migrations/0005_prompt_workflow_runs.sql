@@ -1,0 +1,7 @@
+alter table public.prompt_templates add column if not exists author_id uuid references public.profiles(id) on delete set null;
+alter table public.prompt_templates add column if not exists variable_schema jsonb not null default '["topic","audience","style","platform","language","length"]'::jsonb;
+create table public.workflow_runs (id uuid primary key default gen_random_uuid(), workflow_id uuid references public.workflows(id) on delete set null, content_task_id uuid references public.content_tasks(id) on delete cascade, user_id uuid references public.profiles(id) on delete set null, status public.task_status not null default 'pending', current_step integer not null default 0, attempts integer not null default 0, error text, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create table public.content_favorites (user_id uuid references public.profiles(id) on delete cascade, content_task_id uuid references public.content_tasks(id) on delete cascade, created_at timestamptz not null default now(), primary key(user_id,content_task_id));
+alter table public.workflow_runs enable row level security; alter table public.content_favorites enable row level security;
+create policy "workflow runs own or admin" on public.workflow_runs for select using(user_id=auth.uid() or public.is_admin());
+create policy "favorites own" on public.content_favorites for all using(user_id=auth.uid()) with check(user_id=auth.uid());
