@@ -198,7 +198,7 @@ export async function runTask(taskId: string) {
   const task = taskStore.get(taskId) ?? (await listTasks()).find((item) => item.id === taskId);
   if (!task) return;
 
-  task.status = "generating";
+  task.status = "running";
   task.updatedAt = timestamp();
   await syncTask(task);
   await syncGenerationStatus(task);

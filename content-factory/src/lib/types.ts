@@ -1,4 +1,4 @@
-export type TaskStatus = "pending" | "generating" | "completed" | "failed";
+export type TaskStatus = "pending" | "running" | "generating" | "completed" | "failed";
 
 export type ContentAsset = {
   id: string;
