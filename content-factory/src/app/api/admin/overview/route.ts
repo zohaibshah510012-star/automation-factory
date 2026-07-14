@@ -12,6 +12,7 @@ export async function GET(request: Request) {
       supabase.from("usage_history").select("credits_charged"),
       supabase.from("ai_providers").select("provider_name,enabled,model"),
     ]);
-    return NextResponse.json({ users: users.count ?? 0, tasks: tasks.data ?? [], creditsUsed: (credits.data ?? []).reduce((sum, item) => sum + item.credits_charged, 0), providers: providers.data ?? [] });
+    const taskRows = tasks.data ?? [];
+    return NextResponse.json({ users: users.count ?? 0, tasks: taskRows, taskCount: tasks.count ?? 0, completed: taskRows.filter((item) => item.status === "completed").length, failed: taskRows.filter((item) => item.status === "failed").length, creditsUsed: (credits.data ?? []).reduce((sum, item) => sum + item.credits_charged, 0), providers: providers.data ?? [] });
   } catch { return NextResponse.json({ error: "Admin access required" }, { status: 403 }); }
 }

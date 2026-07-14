@@ -1,5 +1,15 @@
 # Content Factory MVP
 
+## 宝塔生产部署
+
+1. 宝塔安装 Node.js 24、pnpm 与 PM2，克隆仓库到 `/www/wwwroot/automation-factory`。
+2. 进入 `content-factory`，复制 `.env.production.example` 为 `.env.local` 并填写生产变量。
+3. 执行 `pnpm install --frozen-lockfile && pnpm build`。
+4. 启动：`pm2 start ecosystem.config.cjs && pm2 save`。
+5. 宝塔 Nginx 反向代理 `http://127.0.0.1:3000`，绑定域名并启用 SSL。
+
+常规更新：`git pull && pnpm install --frozen-lockfile && pnpm build && pm2 reload automation-factory`。
+
 两天可运行的 AI 内容自动化工厂：输入一个主题，生成标题、短视频脚本、分镜、图片素材与配音。
 
 ## 本地运行
