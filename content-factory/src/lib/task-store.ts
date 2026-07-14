@@ -209,6 +209,7 @@ export async function runTask(taskId: string) {
   task.updatedAt = timestamp();
   await syncTask(task);
   await syncGenerationStatus(task);
+  await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_started", task_id: task.id, metadata: { taskType: task.taskType } });
   console.info("[automation-factory] workflow_started", { taskId: task.id, taskType: task.taskType });
 
   try {
@@ -236,6 +237,7 @@ export async function runTask(taskId: string) {
     task.updatedAt = timestamp();
     await syncTask(task);
     await syncContentPack(task);
+    await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_completed", task_id: task.id, metadata: { provider: getActiveProviderName() } });
     console.info("[automation-factory] workflow_completed", { taskId: task.id });
   } catch (error) {
     task.status = "failed";
@@ -250,6 +252,7 @@ export async function runTask(taskId: string) {
     task.creditsCharged = 0;
     await syncTask(task);
     await syncGenerationStatus(task);
+    await getSupabaseServerClient()?.from("system_logs").insert({ level: "error", event: "task_failed", task_id: task.id, metadata: { type: getProviderErrorType(error) } });
     console.error("[automation-factory] workflow_failed", { taskId: task.id, type: getProviderErrorType(error) });
   }
 }
