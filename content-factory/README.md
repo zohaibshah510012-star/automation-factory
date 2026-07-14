@@ -10,6 +10,17 @@
 
 常规更新：`git pull && pnpm install --frozen-lockfile && pnpm build && pm2 reload automation-factory`。
 
+### 生产环境变量
+
+必填：`NEXT_PUBLIC_APP_URL`、`ADMIN_EMAILS`、`NEXT_PUBLIC_SUPABASE_URL`、`NEXT_PUBLIC_SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`AI_PROVIDER` 及当前 Provider 的密钥。完整清单见 `.env.production.example`；Service Role Key 与模型密钥仅保存在服务器 `.env.local`，不得以 `NEXT_PUBLIC_` 前缀公开。
+
+### 首次管理员与用户验证
+
+1. 将创始人邮箱写入 `ADMIN_EMAILS`，注册/登录后会自动获得管理员角色。
+2. 访问 `/api/health`，确认 `status: ok` 和 `database: true`。
+3. 普通用户注册后应看到 Credits、Prompt Library 与任务历史；创建任务后检查运行状态、结果和 Credits 交易。
+4. 管理员访问 `/admin`，验证 Provider 测试、任务监控与系统日志。
+
 两天可运行的 AI 内容自动化工厂：输入一个主题，生成标题、短视频脚本、分镜、图片素材与配音。
 
 ## 本地运行
