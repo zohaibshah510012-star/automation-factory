@@ -33,7 +33,7 @@ export default function CustomerApp() {
   }, [client, headers, promptId, session]);
 
   useEffect(() => { if (!client) return; void client.auth.getSession().then(({ data }) => { const current = data.session; if (current?.access_token) setSession({ token: current.access_token, email: current.user.email ?? "", userId: current.user.id }); }); }, [client]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { if (session) void fetch("/api/auth/bootstrap", { method: "POST", headers }).then(() => refresh()); }, [headers, refresh, session]);
 
   async function authenticate(event: FormEvent) {
     event.preventDefault(); if (!client) return; setLoading(true); setMessage("");

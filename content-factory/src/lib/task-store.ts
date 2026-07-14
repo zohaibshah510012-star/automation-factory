@@ -190,6 +190,7 @@ export async function createTask(input: { topic: string; brief?: string; userId:
   await syncTask(task);
   taskStore.set(task.id, task);
   await syncGenerationStatus(task);
+  console.info("[automation-factory] task_created", { taskId: task.id, userId: task.userId, taskType: task.taskType, credits: task.creditsCharged });
   return task;
 }
 
@@ -201,10 +202,12 @@ export async function runTask(taskId: string) {
   task.updatedAt = timestamp();
   await syncTask(task);
   await syncGenerationStatus(task);
+  console.info("[automation-factory] workflow_started", { taskId: task.id, taskType: task.taskType });
 
   try {
     const [providers, prompt] = await Promise.all([Promise.resolve(getAiProviders()), resolvePublishedPrompt({ taskType: task.taskType ?? "short_video_script", topic: task.topic, brief: task.brief, userId: task.userId, promptId: task.promptId })]);
     const content = await providers.text.generateContentPack({ ...task, systemPrompt: prompt.systemPrompt, userPrompt: prompt.userPrompt });
+    console.info("[automation-factory] provider_completed", { taskId: task.id, provider: getActiveProviderName(), prompt: prompt.name, version: prompt.version });
 
     task.title = content.title;
     task.script = content.script;
@@ -226,6 +229,7 @@ export async function runTask(taskId: string) {
     task.updatedAt = timestamp();
     await syncTask(task);
     await syncContentPack(task);
+    console.info("[automation-factory] workflow_completed", { taskId: task.id });
   } catch (error) {
     task.status = "failed";
     console.error("[content-factory] provider_error", {
@@ -237,5 +241,6 @@ export async function runTask(taskId: string) {
     task.updatedAt = timestamp();
     await syncTask(task);
     await syncGenerationStatus(task);
+    console.error("[automation-factory] workflow_failed", { taskId: task.id, type: getProviderErrorType(error) });
   }
 }
