@@ -1,0 +1,192 @@
+import { getSupabaseServerClient } from "@/lib/supabase/server";
+import type { ContentPack, ContentTask } from "@/lib/types";
+
+type WorkflowStepType = "prompt" | "ai_generate" | "save_result";
+
+type Workflow = {
+  id: string;
+  name: string;
+};
+
+type WorkflowStep = {
+  id: string;
+  position: number;
+  agent_name: string;
+  enabled: boolean;
+  config: unknown;
+};
+
+type ResolvedPrompt = {
+  name: string;
+  version: number;
+  systemPrompt: string;
+  userPrompt: string;
+};
+
+type GeneratedContent = Required<Omit<ContentPack, "assets">>;
+
+type WorkflowExecutionInput = {
+  task: ContentTask;
+  prompt: ResolvedPrompt;
+  generateContent: () => Promise<GeneratedContent>;
+};
+
+type WorkflowExecutionResult = {
+  workflowId: string;
+  workflowRunId: string;
+  content: GeneratedContent;
+};
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function getStepType(step: WorkflowStep, isLastStep: boolean): WorkflowStepType {
+  const configuredType = asRecord(step.config).type;
+  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "save_result") {
+    return configuredType;
+  }
+
+  // Existing seed workflows predate the typed step editor. Keep them executable
+  // by mapping their Text Agent to generation and their final step to persistence.
+  if (step.agent_name === "Text Agent") return "ai_generate";
+  if (isLastStep) return "save_result";
+  return "prompt";
+}
+
+async function requireActiveWorkflow() {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) throw new Error("Workflow Executor requires Supabase configuration.");
+
+  const { data: workflow, error: workflowError } = await supabase
+    .from("workflows")
+    .select("id,name")
+    .eq("enabled", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (workflowError) throw new Error(`Unable to load workflow: ${workflowError.message}`);
+  if (!workflow) throw new Error("No enabled workflow is available for this task.");
+
+  const { data: steps, error: stepsError } = await supabase
+    .from("workflow_steps")
+    .select("id,position,agent_name,enabled,config")
+    .eq("workflow_id", workflow.id)
+    .eq("enabled", true)
+    .order("position", { ascending: true });
+
+  if (stepsError) throw new Error(`Unable to load workflow steps: ${stepsError.message}`);
+  if (!steps?.length) throw new Error("The selected workflow does not contain enabled steps.");
+
+  return { supabase, workflow: workflow as Workflow, steps: steps as WorkflowStep[] };
+}
+
+async function failWorkflowRun(workflowRunId: string, error: unknown) {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return;
+  await supabase
+    .from("workflow_runs")
+    .update({ status: "failed", error: error instanceof Error ? error.message : "Workflow execution failed.", updated_at: new Date().toISOString() })
+    .eq("id", workflowRunId);
+}
+
+export async function executeWorkflow(input: WorkflowExecutionInput): Promise<WorkflowExecutionResult> {
+  const { supabase, workflow, steps } = await requireActiveWorkflow();
+  const startedAt = new Date().toISOString();
+  const { data: workflowRun, error: workflowRunError } = await supabase
+    .from("workflow_runs")
+    .insert({
+      workflow_id: workflow.id,
+      content_task_id: input.task.id,
+      user_id: input.task.userId ?? null,
+      // task_status predates the application-level "running" state.
+      status: "generating",
+      current_step: 0,
+      attempts: 1,
+      created_at: startedAt,
+      updated_at: startedAt,
+    })
+    .select("id")
+    .single();
+
+  if (workflowRunError || !workflowRun) {
+    throw new Error(`Unable to create workflow run: ${workflowRunError?.message ?? "unknown error"}`);
+  }
+
+  let generatedContent: GeneratedContent | undefined;
+
+  try {
+    for (const [index, step] of steps.entries()) {
+      const stepType = getStepType(step, index === steps.length - 1);
+      const stepInput = stepType === "prompt"
+        ? { prompt: input.prompt.name, version: input.prompt.version }
+        : stepType === "ai_generate"
+          ? { topic: input.task.topic, prompt: input.prompt.name }
+          : { taskId: input.task.id, hasGeneratedContent: Boolean(generatedContent) };
+      const stepStartedAt = new Date().toISOString();
+      const { data: stepRun, error: stepRunError } = await supabase
+        .from("workflow_step_runs")
+        .insert({
+          workflow_run_id: workflowRun.id,
+          step_id: step.id,
+          position: step.position,
+          status: "generating",
+          input: stepInput,
+          started_at: stepStartedAt,
+        })
+        .select("id")
+        .single();
+
+      if (stepRunError || !stepRun) {
+        throw new Error(`Unable to create workflow step run: ${stepRunError?.message ?? "unknown error"}`);
+      }
+
+      try {
+        let output: Record<string, unknown>;
+        if (stepType === "prompt") {
+          output = { systemPrompt: input.prompt.systemPrompt, userPrompt: input.prompt.userPrompt };
+        } else if (stepType === "ai_generate") {
+          generatedContent = await input.generateContent();
+          output = { title: generatedContent.title, script: generatedContent.script, storyboard: generatedContent.storyboard };
+        } else {
+          if (!generatedContent) throw new Error("Workflow save_result step requires generated content.");
+          output = { saved: true, title: generatedContent.title };
+        }
+
+        const { error: completeStepError } = await supabase
+          .from("workflow_step_runs")
+          .update({ status: "completed", output, completed_at: new Date().toISOString() })
+          .eq("id", stepRun.id);
+        if (completeStepError) throw new Error(`Unable to complete workflow step: ${completeStepError.message}`);
+
+        const { error: progressError } = await supabase
+          .from("workflow_runs")
+          .update({ current_step: step.position, updated_at: new Date().toISOString() })
+          .eq("id", workflowRun.id);
+        if (progressError) throw new Error(`Unable to update workflow progress: ${progressError.message}`);
+      } catch (error) {
+        await supabase
+          .from("workflow_step_runs")
+          .update({ status: "failed", error: error instanceof Error ? error.message : "Workflow step failed.", completed_at: new Date().toISOString() })
+          .eq("id", stepRun.id);
+        throw error;
+      }
+    }
+
+    if (!generatedContent) throw new Error("Workflow completed without an AI generation step.");
+
+    const { error: completeWorkflowError } = await supabase
+      .from("workflow_runs")
+      .update({ status: "completed", current_step: steps.at(-1)?.position ?? 0, updated_at: new Date().toISOString() })
+      .eq("id", workflowRun.id);
+    if (completeWorkflowError) throw new Error(`Unable to complete workflow run: ${completeWorkflowError.message}`);
+
+    return { workflowId: workflow.id, workflowRunId: workflowRun.id, content: generatedContent };
+  } catch (error) {
+    await failWorkflowRun(workflowRun.id, error);
+    throw error;
+  }
+}

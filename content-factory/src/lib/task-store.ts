@@ -8,6 +8,7 @@ import {
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { resolvePublishedPrompt, type TaskType } from "@/lib/prompt-engine";
 import type { ContentTask } from "@/lib/types";
+import { executeWorkflow } from "@/lib/workflow-executor";
 
 const taskStore = new Map<string, ContentTask>();
 
@@ -214,8 +215,13 @@ export async function runTask(taskId: string) {
 
   try {
     const [providers, prompt] = await Promise.all([Promise.resolve(getAiProviders()), resolvePublishedPrompt({ taskType: task.taskType ?? "short_video_script", topic: task.topic, brief: task.brief, userId: task.userId, promptId: task.promptId })]);
-    const content = await providers.text.generateContentPack({ ...task, systemPrompt: prompt.systemPrompt, userPrompt: prompt.userPrompt });
-    console.info("[automation-factory] provider_completed", { taskId: task.id, provider: getActiveProviderName(), prompt: prompt.name, version: prompt.version });
+    const workflow = await executeWorkflow({
+      task,
+      prompt,
+      generateContent: () => providers.text.generateContentPack({ ...task, systemPrompt: prompt.systemPrompt, userPrompt: prompt.userPrompt }),
+    });
+    const content = workflow.content;
+    console.info("[automation-factory] provider_completed", { taskId: task.id, provider: getActiveProviderName(), prompt: prompt.name, version: prompt.version, workflowId: workflow.workflowId, workflowRunId: workflow.workflowRunId });
 
     task.title = content.title;
     task.script = content.script;
