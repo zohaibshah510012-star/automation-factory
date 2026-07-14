@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as { topic?: string; brief?: string; taskType?: TaskType; promptId?: string };
+  const body = (await request.json()) as { topic?: string; brief?: string; taskType?: TaskType; promptId?: string; agentId?: string };
   const topic = body.topic?.trim();
 
   if (!topic) {
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
   try {
     const user = await requireUser(request);
-    const task = await createTask({ topic, brief: body.brief?.trim(), userId: user.id, taskType: body.taskType ?? "short_video_script", promptId: body.promptId });
+    const task = await createTask({ topic, brief: body.brief?.trim(), userId: user.id, taskType: body.taskType ?? "short_video_script", promptId: body.promptId, agentId: body.agentId });
     void runTask(task.id);
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {

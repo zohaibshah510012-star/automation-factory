@@ -8,7 +8,7 @@ import {
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { resolvePublishedPrompt, type TaskType } from "@/lib/prompt-engine";
 import type { ContentTask } from "@/lib/types";
-import { executeWorkflow } from "@/lib/workflow-executor";
+import { runAgent } from "@/lib/agent-runtime";
 
 const taskStore = new Map<string, ContentTask>();
 
@@ -46,6 +46,7 @@ type DatabaseTask = {
   project_id: string | null;
   user_id?: string | null;
   task_type?: TaskType;
+  input_payload?: unknown;
   credits_charged?: number;
   topic: string;
   brief: string | null;
@@ -60,12 +61,16 @@ type DatabaseTask = {
 };
 
 function taskFromDatabase(row: DatabaseTask): ContentTask {
+  const inputPayload = row.input_payload && typeof row.input_payload === "object" && !Array.isArray(row.input_payload)
+    ? row.input_payload as Record<string, unknown>
+    : {};
   return {
     id: row.id,
     userId: row.user_id ?? undefined,
     topic: row.topic,
     brief: row.brief ?? undefined,
     taskType: row.task_type ?? "short_video_script",
+    agentId: typeof inputPayload.agent_id === "string" ? inputPayload.agent_id : undefined,
     creditsCharged: row.credits_charged ?? 0,
     status: row.status,
     title: row.title ?? undefined,
@@ -88,6 +93,7 @@ async function syncTask(task: ContentTask) {
     topic: task.topic,
     brief: task.brief ?? null,
     task_type: task.taskType ?? "short_video_script",
+    input_payload: task.agentId ? { agent_id: task.agentId } : {},
     credits_charged: task.creditsCharged ?? 0,
     status: task.status,
     title: task.title ?? null,
@@ -179,7 +185,7 @@ async function refundCredits(task: ContentTask) {
   await supabase.from("credit_transactions").insert({ user_id: task.userId, amount: task.creditsCharged, balance_after: balance, reason: "generation_refund", content_task_id: task.id });
 }
 
-export async function createTask(input: { topic: string; brief?: string; userId: string; taskType: TaskType; promptId?: string }): Promise<ContentTask> {
+export async function createTask(input: { topic: string; brief?: string; userId: string; taskType: TaskType; promptId?: string; agentId?: string }): Promise<ContentTask> {
   const createdAt = timestamp();
   const task: ContentTask = {
     id: crypto.randomUUID(),
@@ -188,6 +194,7 @@ export async function createTask(input: { topic: string; brief?: string; userId:
     brief: input.brief,
     taskType: input.taskType,
     promptId: input.promptId,
+    agentId: input.agentId,
     status: "pending",
     assets: [],
     createdAt,
@@ -215,13 +222,13 @@ export async function runTask(taskId: string) {
 
   try {
     const [providers, prompt] = await Promise.all([Promise.resolve(getAiProviders()), resolvePublishedPrompt({ taskType: task.taskType ?? "short_video_script", topic: task.topic, brief: task.brief, userId: task.userId, promptId: task.promptId })]);
-    const workflow = await executeWorkflow({
+    const agent = await runAgent(task.id, {
       task,
       prompt,
       generateContent: () => providers.text.generateContentPack({ ...task, systemPrompt: prompt.systemPrompt, userPrompt: prompt.userPrompt }),
     });
-    const content = workflow.content;
-    console.info("[automation-factory] provider_completed", { taskId: task.id, provider: getActiveProviderName(), prompt: prompt.name, version: prompt.version, workflowId: workflow.workflowId, workflowRunId: workflow.workflowRunId });
+    const content = agent.content;
+    console.info("[automation-factory] provider_completed", { taskId: task.id, provider: getActiveProviderName(), prompt: prompt.name, version: prompt.version, workflowId: agent.workflowId, workflowRunId: agent.workflowRunId, agentId: agent.agentId, agentRunId: agent.agentRunId });
 
     task.title = content.title;
     task.script = content.script;

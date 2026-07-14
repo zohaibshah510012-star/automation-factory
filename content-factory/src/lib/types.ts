@@ -15,6 +15,7 @@ export type ContentTask = {
   brief?: string;
   taskType?: "marketing" | "short_video_script" | "video" | "image" | "drama" | "ecommerce" | "social";
   promptId?: string;
+  agentId?: string;
   creditsCharged?: number;
   status: TaskStatus;
   title?: string;
