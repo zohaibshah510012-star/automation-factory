@@ -170,6 +170,13 @@ async function reserveCredits(task: ContentTask) {
   task.creditsCharged = amount;
   await supabase.from("usage_history").insert({ user_id: task.userId, content_task_id: task.id, capability: task.taskType ?? "short_video_script", provider: agent?.provider_name, model: agent?.model, credits_charged: amount });
 }
+async function refundCredits(task: ContentTask) {
+  const supabase = getSupabaseServerClient(); if (!supabase || !task.userId || !task.creditsCharged) return;
+  const { data: profile } = await supabase.from("profiles").select("credits_balance").eq("id", task.userId).single();
+  const balance = (profile?.credits_balance ?? 0) + task.creditsCharged;
+  await supabase.from("profiles").update({ credits_balance: balance }).eq("id", task.userId);
+  await supabase.from("credit_transactions").insert({ user_id: task.userId, amount: task.creditsCharged, balance_after: balance, reason: "generation_refund", content_task_id: task.id });
+}
 
 export async function createTask(input: { topic: string; brief?: string; userId: string; taskType: TaskType; promptId?: string }): Promise<ContentTask> {
   const createdAt = timestamp();
@@ -239,6 +246,8 @@ export async function runTask(taskId: string) {
     });
     task.error = userFacingGenerationError(error);
     task.updatedAt = timestamp();
+    await refundCredits(task);
+    task.creditsCharged = 0;
     await syncTask(task);
     await syncGenerationStatus(task);
     console.error("[automation-factory] workflow_failed", { taskId: task.id, type: getProviderErrorType(error) });
