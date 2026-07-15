@@ -27,6 +27,24 @@ async function getDramaScenes(dramaId: string): Promise<DramaScene[]> {
 
 function calculateDramaProgress(scenes: DramaScene[]): DramaProgress { return { total: scenes.length, completed: scenes.filter(scene => scene.video?.status === "completed" || scene.image?.status === "completed").length, failed: scenes.filter(scene => scene.video?.status === "failed" || scene.image?.status === "failed").length }; }
 
+async function getDramaProgresses(ids: string[]) {
+  const client = requireClient(); if (!ids.length) return new Map<string, DramaProgress>();
+  const { data } = await client.from("short_drama_scenes").select("drama_id,status").in("drama_id", ids);
+  const groups = new Map<string, DramaScene[]>();
+  for (const row of data ?? []) groups.set(row.drama_id, [...(groups.get(row.drama_id) ?? []), { ...row, id: "", scene_number: 0, content: {}, image_task_id: null, video_task_id: null, image: null, video: null }]);
+  return new Map(ids.map(id => [id, calculateDramaProgress(groups.get(id) ?? [])]));
+}
+
+async function listDramas(userId?: string) {
+  const client = requireClient(); let query = client.from("short_drama_assets").select("id,user_id,title,status,created_at").order("created_at", { ascending: false });
+  if (userId) query = query.eq("user_id", userId); const { data, error } = await query; if (error) throw error;
+  const rows = data ?? []; const progress = await getDramaProgresses(rows.map(row => row.id));
+  return rows.map(row => ({ ...row, progress: progress.get(row.id) ?? { total: 0, completed: 0, failed: 0 } }));
+}
+
+export async function listUserDramas(userId: string) { return listDramas(userId).then(rows => rows.map(({ user_id, ...drama }) => drama)); }
+export async function listAllDramas() { return listDramas(); }
+
 export async function getDramaAsset(id: string, userId?: string) {
   const drama = await getDramaBase(id, userId); if (!drama) return undefined;
   const scenes = await getDramaScenes(id);
