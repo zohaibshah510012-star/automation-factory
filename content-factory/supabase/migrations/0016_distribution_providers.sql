@@ -1,0 +1,4 @@
+create table public.distribution_providers(id uuid primary key default gen_random_uuid(),platform text not null unique check(platform in ('youtube','tiktok','instagram','xiaohongshu','mock')),provider_type text not null,enabled boolean not null default false,mode text not null default 'sandbox' check(mode in ('sandbox','production')),created_at timestamptz not null default now(),updated_at timestamptz not null default now());
+alter table public.distribution_providers enable row level security;
+create policy "admins manage distribution providers" on public.distribution_providers for all using(public.is_admin()) with check(public.is_admin());
+insert into public.distribution_providers(platform,provider_type,enabled,mode) values('mock','mock',true,'sandbox'),('youtube','youtube',false,'sandbox'),('tiktok','tiktok',false,'sandbox'),('instagram','instagram',false,'sandbox'),('xiaohongshu','xiaohongshu',false,'sandbox') on conflict(platform) do nothing;
