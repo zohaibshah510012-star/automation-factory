@@ -1,7 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ContentAsset, ContentPack, ContentTask } from "@/lib/types";
 import { writeDramaAsset } from "@/lib/short-drama-asset-service";
-import { createDistributionJob, processDistributionJob } from "@/lib/distribution-service";
+import { createDistributionJob } from "@/lib/distribution-service";
 
 type WorkflowStepType = "prompt" | "ai_generate" | "story_generate" | "character_generate" | "scene_generate" | "image_generate" | "video_generate" | "publish_content" | "save_result";
 
@@ -196,7 +196,7 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
           if (generatedContent) generatedContent.assets = generatedAssets;
           output = { video: asset, thumbnailUrl: video.thumbnailUrl ?? null, metadata: video.metadata ?? {} };
         } else if (stepType === "publish_content") {
-          if (!input.task.userId) throw new Error("Workflow publish_content requires a user."); const job=await createDistributionJob({userId:input.task.userId,contentId:input.task.id,contentType:input.task.taskType??"text",platform:"mock"}); await processDistributionJob(job.id); output={distributionJobId:job.id};
+          if (!input.task.userId) throw new Error("Workflow publish_content requires a user."); const job=await createDistributionJob({userId:input.task.userId,contentId:input.task.id,contentType:input.task.taskType??"text",platform:"mock"}); output={distributionJobId:job.id,status:"queued"};
         } else {
           if (!generatedContent) throw new Error("Workflow save_result step requires generated content.");
           output = { saved: true, title: generatedContent.title };
