@@ -286,3 +286,44 @@ export async function listCreditTransactions(limit = 100) {
   if (error) throw error;
   return data ?? [];
 }
+
+export async function getUserBillingSummary(userId: string) {
+  const supabase = store();
+  const [subscription, profileResult, transactionsResult, usageResult, plansResult] = await Promise.all([
+    getUserSubscription(userId),
+    supabase.from("profiles").select("id,email,display_name,credits_balance,status").eq("id", userId).maybeSingle(),
+    supabase
+      .from("credit_transactions")
+      .select("id,amount,balance_after,reason,type,status,subscription_id,content_task_id,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("usage_history")
+      .select("id,capability,provider,model,credits_charged,duration_ms,created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    supabase.from("plans").select("*").eq("enabled", true).order("price", { ascending: true }),
+  ]);
+
+  if (profileResult.error) throw profileResult.error;
+  if (transactionsResult.error) throw transactionsResult.error;
+  if (usageResult.error) throw usageResult.error;
+  if (plansResult.error) throw plansResult.error;
+
+  const usage = usageResult.data ?? [];
+  const creditsConsumed = usage.reduce((total, item) => total + Number(item.credits_charged ?? 0), 0);
+
+  return {
+    profile: profileResult.data,
+    subscription,
+    credits: {
+      balance: profileResult.data?.credits_balance ?? 0,
+      consumed: creditsConsumed,
+      transactions: transactionsResult.data ?? [],
+      usage,
+    },
+    availablePlans: plansResult.data ?? [],
+  };
+}
