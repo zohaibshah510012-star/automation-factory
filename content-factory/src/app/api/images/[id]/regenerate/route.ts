@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createImageTask, listImageTasks, runImageTask } from "@/lib/image-service";
+import { assertImageProviderConfigured } from "@/lib/ai-providers";
 import { requireUser } from "@/lib/request-auth";
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -8,6 +9,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const id = (await params).id;
     const original = (await listImageTasks(user.id)).find((task) => task.id === id);
     if (!original) return NextResponse.json({ error: "Image task not found" }, { status: 404 });
+    assertImageProviderConfigured();
     const task = await createImageTask({ userId: user.id, prompt: original.prompt, model: original.model ?? undefined, size: original.size ?? undefined });
     void runImageTask(task.id);
     return NextResponse.json({ task }, { status: 201 });

@@ -16,7 +16,12 @@ async function requireBillingContext(task: ContentTask) {
 async function getCreditAgent(task: ContentTask): Promise<CreditAgent> {
   const supabase = await requireBillingContext(task);
   let query = supabase.from("agents").select("credit_cost,provider_name,model").eq("enabled", true);
-  query = task.agentId ? query.eq("id", task.agentId) : query.eq("agent_name", "Text Agent");
+  const defaultAgentByTaskType: Record<string, string> = {
+    image: "Image Agent",
+    video: "Video Agent",
+    drama: "Short Drama Producer",
+  };
+  query = task.agentId ? query.eq("id", task.agentId) : query.eq("agent_name", defaultAgentByTaskType[task.taskType ?? ""] ?? "Text Agent");
   const { data: agent, error } = await query.maybeSingle();
   if (error) throw new Error(`Unable to load credit pricing: ${error.message}`);
   return { credit_cost: agent?.credit_cost ?? 25, provider_name: agent?.provider_name ?? null, model: agent?.model ?? null };
