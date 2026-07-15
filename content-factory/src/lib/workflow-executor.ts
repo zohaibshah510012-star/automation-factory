@@ -1,7 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ContentAsset, ContentPack, ContentTask } from "@/lib/types";
 
-type WorkflowStepType = "prompt" | "ai_generate" | "story_generate" | "scene_generate" | "image_generate" | "video_generate" | "save_result";
+type WorkflowStepType = "prompt" | "ai_generate" | "story_generate" | "character_generate" | "scene_generate" | "image_generate" | "video_generate" | "save_result";
 
 type Workflow = {
   id: string;
@@ -47,7 +47,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function getStepType(step: WorkflowStep, isLastStep: boolean): WorkflowStepType {
   const configuredType = asRecord(step.config).type;
-  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "story_generate" || configuredType === "scene_generate" || configuredType === "image_generate" || configuredType === "video_generate" || configuredType === "save_result") {
+  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "story_generate" || configuredType === "character_generate" || configuredType === "scene_generate" || configuredType === "image_generate" || configuredType === "video_generate" || configuredType === "save_result") {
     return configuredType;
   }
 
@@ -131,6 +131,8 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
           ? { topic: input.task.topic, prompt: input.prompt.name }
           : stepType === "scene_generate"
             ? { topic: input.task.topic, hasStory: Boolean(generatedContent) }
+            : stepType === "character_generate"
+              ? { topic: input.task.topic, hasStory: Boolean(generatedContent) }
           : stepType === "image_generate"
             ? { topic: input.task.topic, prompt: input.prompt.name }
             : stepType === "video_generate"
@@ -162,9 +164,13 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
           generatedContent = await input.generateContent();
           generatedContent.assets = generatedAssets;
           output = stepType === "story_generate" ? { title: generatedContent.title, story: generatedContent.script } : { title: generatedContent.title, script: generatedContent.script, storyboard: generatedContent.storyboard };
+        } else if (stepType === "character_generate") {
+          if (!generatedContent) throw new Error("Workflow character_generate step requires a story result.");
+          const characters = [{ character_name: "主角", appearance: "与主题相符的鲜明视觉特征", personality: "目标明确、具有成长弧光", role: "推动主线冲突", visual_prompt: `${input.task.topic}, cinematic character design, consistent costume, dramatic lighting` }];
+          output = { characters };
         } else if (stepType === "scene_generate") {
           if (!generatedContent) throw new Error("Workflow scene_generate step requires a story result.");
-          output = { scenes: generatedContent.storyboard, story: generatedContent.script };
+          output = { scenes: generatedContent.storyboard.map((description, index) => ({ scene_number: index + 1, title: `场景 ${index + 1}`, description, location: "根据剧情设定", characters: ["主角"], dialogue: "根据剧情推进的关键对白", camera: "cinematic medium shot", duration: "8-12s" })), story: generatedContent.script };
         } else if (stepType === "image_generate") {
           if (!input.generateImage) throw new Error("Workflow image_generate step requires an image provider.");
           const image = await input.generateImage();
