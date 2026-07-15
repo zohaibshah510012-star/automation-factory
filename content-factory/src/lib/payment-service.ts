@@ -9,6 +9,11 @@ type ProviderInput = {
   status?: "configured" | "disabled" | "unavailable";
 };
 
+type VerifyPaymentOptions = {
+  userId?: string;
+  allowAdmin?: boolean;
+};
+
 function store() {
   const supabase = getSupabaseServerClient();
   if (!supabase) throw new Error("PAYMENT_STORE_UNAVAILABLE");
@@ -148,10 +153,22 @@ export async function createCheckout(input: { userId: string; planId: string; pr
   return updated;
 }
 
-export async function verifyPayment(paymentId: string) {
+async function getPaymentForVerification(paymentId: string, options?: VerifyPaymentOptions) {
   const supabase = store();
-  const { data: payment, error } = await supabase.from("payments").select("*").eq("id", paymentId).single();
+  if (!options?.allowAdmin && !options?.userId) throw new Error("PAYMENT_VERIFICATION_CONTEXT_REQUIRED");
+
+  let query = supabase.from("payments").select("*").eq("id", paymentId);
+  if (!options.allowAdmin) query = query.eq("user_id", options.userId);
+
+  const { data, error } = await query.maybeSingle();
   if (error) throw error;
+  if (!data) throw new Error("PAYMENT_NOT_FOUND");
+  return data;
+}
+
+export async function verifyPayment(paymentId: string, options?: VerifyPaymentOptions) {
+  const supabase = store();
+  const payment = await getPaymentForVerification(paymentId, options);
 
   const provider = getPaymentProvider(providerName(payment.provider));
   const result = await provider.verifyPayment({
