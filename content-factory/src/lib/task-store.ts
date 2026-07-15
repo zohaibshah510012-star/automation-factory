@@ -12,6 +12,7 @@ import { resolvePublishedPrompt, type TaskType } from "@/lib/prompt-engine";
 import type { ContentTask } from "@/lib/types";
 import { runAgent } from "@/lib/agent-runtime";
 import { commitCredits, refundCredits, reserveCredits } from "@/lib/credits-service";
+import { createDramaSceneImages } from "@/lib/drama-images";
 
 const taskStore = new Map<string, ContentTask>();
 
@@ -222,6 +223,7 @@ export async function runTask(taskId: string) {
     task.script = content.script;
     task.storyboard = content.storyboard;
     task.assets = content.assets ?? [];
+    if (task.taskType === "drama" && task.userId) await createDramaSceneImages({ dramaId: task.id, userId: task.userId, topic: task.topic, scenes: content.storyboard });
 
     // The DeepSeek MVP is intentionally text-only: title, script, and storyboard.
     if (!task.assets.length && getActiveProviderName() !== "deepseek") {

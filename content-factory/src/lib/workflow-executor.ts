@@ -172,12 +172,16 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
           if (!generatedContent) throw new Error("Workflow scene_generate step requires a story result.");
           output = { scenes: generatedContent.storyboard.map((description, index) => ({ scene_number: index + 1, title: `场景 ${index + 1}`, description, location: "根据剧情设定", characters: ["主角"], dialogue: "根据剧情推进的关键对白", camera: "cinematic medium shot", duration: "8-12s" })), story: generatedContent.script };
         } else if (stepType === "image_generate") {
+          if (input.task.taskType === "drama") {
+            output = { queuedSceneImages: true, scenes: generatedContent?.storyboard ?? [] };
+          } else {
           if (!input.generateImage) throw new Error("Workflow image_generate step requires an image provider.");
           const image = await input.generateImage();
           const asset = { id: `workflow-image-${step.position}`, type: "image" as const, name: `Workflow image ${step.position}`, url: image.url, provider: `${image.provider}/${image.model}` };
           generatedAssets.push(asset);
           if (generatedContent) generatedContent.assets = generatedAssets;
           output = { image: asset, metadata: image.metadata ?? {} };
+          }
         } else if (stepType === "video_generate") {
           if (!input.generateVideo) throw new Error("Workflow video_generate step requires a video provider.");
           const video = await input.generateVideo();
