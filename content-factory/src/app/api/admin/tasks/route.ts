@@ -9,8 +9,13 @@ export async function GET(request: Request) {
   try {
     await requireAdmin(request);
     return NextResponse.json(await listAdminTaskMonitoring(), { headers: { "Cache-Control": "no-store" } });
-  } catch {
-    return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown admin tasks error";
+    console.error("[automation-factory] admin_tasks_query_failed", { message });
+    return NextResponse.json(
+      { error: message === "AUTH_REQUIRED" || message === "ADMIN_REQUIRED" ? "Admin access required" : "Unable to load admin tasks" },
+      { status: message === "AUTH_REQUIRED" || message === "ADMIN_REQUIRED" ? 403 : 500 },
+    );
   }
 }
 

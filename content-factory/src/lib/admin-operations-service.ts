@@ -96,7 +96,7 @@ export async function listAdminTaskMonitoring() {
   const [tasks, logs, providers, usage] = await Promise.all([
     supabase
       .from("content_tasks")
-      .select("id,user_id,topic,task_type,status,error,credits_charged,created_at,updated_at,profiles(email)")
+      .select("id,user_id,topic,task_type,status,error,credits_charged,created_at,updated_at,profiles!content_tasks_user_id_fkey(email)")
       .in("status", ["running", "generating", "pending", "failed"])
       .order("updated_at", { ascending: false })
       .limit(100),
