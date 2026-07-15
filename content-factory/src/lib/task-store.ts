@@ -209,13 +209,13 @@ export async function runTask(taskId: string) {
   try {
     const pricing = await reserveCredits(task);
     await syncTask(task);
-    const [providers, imageProvider, videoProvider, prompt] = await Promise.all([Promise.resolve(getAiProviders()), Promise.resolve(getImageProvider()), Promise.resolve(getVideoProvider()), resolvePublishedPrompt({ taskType: task.taskType ?? "short_video_script", topic: task.topic, brief: task.brief, userId: task.userId, promptId: task.promptId })]);
+    const [providers, prompt] = await Promise.all([Promise.resolve(getAiProviders()), resolvePublishedPrompt({ taskType: task.taskType ?? "short_video_script", topic: task.topic, brief: task.brief, userId: task.userId, promptId: task.promptId })]);
     const agent = await runAgent(task.id, {
       task,
       prompt,
       generateContent: () => providers.text.generateContentPack({ ...task, systemPrompt: prompt.systemPrompt, userPrompt: prompt.userPrompt }),
-      generateImage: () => imageProvider.generateImage({ taskId: task.id, prompt: prompt.userPrompt }),
-      generateVideo: () => videoProvider.generateVideo({ taskId: task.id, prompt: prompt.userPrompt }),
+      generateImage: () => getImageProvider().generateImage({ taskId: task.id, prompt: prompt.userPrompt }),
+      generateVideo: () => getVideoProvider().generateVideo({ taskId: task.id, prompt: prompt.userPrompt }),
     });
     const content = agent.content;
     console.info("[automation-factory] provider_completed", { taskId: task.id, provider: getActiveProviderName(), prompt: prompt.name, version: prompt.version, workflowId: agent.workflowId, workflowRunId: agent.workflowRunId, agentId: agent.agentId, agentRunId: agent.agentRunId });

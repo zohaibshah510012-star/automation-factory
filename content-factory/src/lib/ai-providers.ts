@@ -2,6 +2,8 @@
 export {
   getActiveProviderName,
   getAiProviders,
+  assertImageProviderConfigured,
+  assertVideoProviderConfigured,
   getImageProvider,
   getImageProviderName,
   getVideoProvider,

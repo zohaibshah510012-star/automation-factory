@@ -12,6 +12,8 @@ import { createRunwayProviders } from "@/lib/providers/runway";
 export type ProviderName = "openai" | "gemini" | "deepseek" | "alternative" | "local" | "flux" | "runway" | "kling";
 
 const supportedProviders: ProviderName[] = ["openai", "gemini", "deepseek", "alternative", "local", "flux", "runway", "kling"];
+const supportedImageProviders: ProviderName[] = ["openai", "gemini", "flux", "local"];
+const supportedVideoProviders: ProviderName[] = ["runway", "kling", "local"];
 
 function parseProviderName(value: string, envName: string): ProviderName {
   if (supportedProviders.includes(value as ProviderName)) return value as ProviderName;
@@ -40,8 +42,21 @@ export function getProvidersFor(provider: ProviderName): AiProviders {
   return factory[provider]();
 }
 
+function requireProviderEnv(value: string | undefined, envName: "AI_IMAGE_PROVIDER" | "AI_VIDEO_PROVIDER") {
+  if (!value?.trim()) {
+    throw new ProviderConfigurationError(envName === "AI_IMAGE_PROVIDER" ? "Image provider not configured" : "Video provider not configured");
+  }
+  return value.trim();
+}
+
+function parseCapabilityProvider(value: string | undefined, envName: "AI_IMAGE_PROVIDER" | "AI_VIDEO_PROVIDER", providers: ProviderName[]) {
+  const provider = parseProviderName(requireProviderEnv(value, envName), envName);
+  if (providers.includes(provider)) return provider;
+  throw new ProviderConfigurationError(envName === "AI_IMAGE_PROVIDER" ? "Image provider not configured" : "Video provider not configured");
+}
+
 export function getImageProviderName(): ProviderName {
-  return parseProviderName(process.env.AI_IMAGE_PROVIDER ?? process.env.AI_PROVIDER ?? "openai", "AI_IMAGE_PROVIDER");
+  return parseCapabilityProvider(process.env.AI_IMAGE_PROVIDER, "AI_IMAGE_PROVIDER", supportedImageProviders);
 }
 
 export function getImageProvider() {
@@ -49,9 +64,17 @@ export function getImageProvider() {
 }
 
 export function getVideoProviderName(): ProviderName {
-  return parseProviderName(process.env.AI_VIDEO_PROVIDER ?? process.env.AI_PROVIDER ?? "openai", "AI_VIDEO_PROVIDER");
+  return parseCapabilityProvider(process.env.AI_VIDEO_PROVIDER, "AI_VIDEO_PROVIDER", supportedVideoProviders);
 }
 
 export function getVideoProvider() {
   return getProvidersFor(getVideoProviderName()).video;
+}
+
+export function assertImageProviderConfigured() {
+  void getImageProviderName();
+}
+
+export function assertVideoProviderConfigured() {
+  void getVideoProviderName();
 }

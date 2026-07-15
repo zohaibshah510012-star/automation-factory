@@ -33,6 +33,8 @@ export function getProviderErrorType(error: unknown): ProviderErrorType {
 }
 
 export function getProviderErrorMessage(error: unknown) {
+  if (error instanceof ProviderConfigurationError) return error.message;
+
   const messages: Record<ProviderErrorType, string> = {
     configuration: "AI service configuration is incomplete.",
     authentication: "AI credentials are invalid or expired.",

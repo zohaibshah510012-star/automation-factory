@@ -14,16 +14,31 @@ function client() {
   });
 }
 
+function ensureJsonModePrompt(value: string | undefined, fallback: string) {
+  const prompt = value?.trim() || fallback;
+  return /\bjson\b/i.test(prompt)
+    ? prompt
+    : `${prompt}\n\nReturn valid json only. The response must be a single json object with title, script, and storyboard.`;
+}
+
 export function createDeepSeekProviders(): AiProviders {
   return {
     text: {
       async generateContentPack({ topic, brief, systemPrompt, userPrompt }) {
+        const safeSystemPrompt = ensureJsonModePrompt(
+          systemPrompt,
+          "Return JSON only: title, script, storyboard with exactly four strings.",
+        );
+        const safeUserPrompt = ensureJsonModePrompt(
+          userPrompt,
+          "Topic: " + topic + "\nBrief: " + (brief || "none"),
+        );
         const response = await client().chat.completions.create({
           model: process.env.DEEPSEEK_TEXT_MODEL ?? "deepseek-chat",
           response_format: { type: "json_object" },
           messages: [
-            { role: "system", content: systemPrompt || "Return JSON only: title, script, storyboard with exactly four strings." },
-            { role: "user", content: userPrompt || "Topic: " + topic + "\nBrief: " + (brief || "none") },
+            { role: "system", content: safeSystemPrompt },
+            { role: "user", content: safeUserPrompt },
           ],
         });
         const content = response.choices[0]?.message.content;
