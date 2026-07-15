@@ -1,8 +1,9 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ContentAsset, ContentPack, ContentTask } from "@/lib/types";
 import { writeDramaAsset } from "@/lib/short-drama-asset-service";
+import { createDistributionJob, processDistributionJob } from "@/lib/distribution-service";
 
-type WorkflowStepType = "prompt" | "ai_generate" | "story_generate" | "character_generate" | "scene_generate" | "image_generate" | "video_generate" | "save_result";
+type WorkflowStepType = "prompt" | "ai_generate" | "story_generate" | "character_generate" | "scene_generate" | "image_generate" | "video_generate" | "publish_content" | "save_result";
 
 type Workflow = {
   id: string;
@@ -48,7 +49,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function getStepType(step: WorkflowStep, isLastStep: boolean): WorkflowStepType {
   const configuredType = asRecord(step.config).type;
-  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "story_generate" || configuredType === "character_generate" || configuredType === "scene_generate" || configuredType === "image_generate" || configuredType === "video_generate" || configuredType === "save_result") {
+  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "story_generate" || configuredType === "character_generate" || configuredType === "scene_generate" || configuredType === "image_generate" || configuredType === "video_generate" || configuredType === "publish_content" || configuredType === "save_result") {
     return configuredType;
   }
 
@@ -194,6 +195,8 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
           generatedAssets.push(asset);
           if (generatedContent) generatedContent.assets = generatedAssets;
           output = { video: asset, thumbnailUrl: video.thumbnailUrl ?? null, metadata: video.metadata ?? {} };
+        } else if (stepType === "publish_content") {
+          if (!input.task.userId) throw new Error("Workflow publish_content requires a user."); const job=await createDistributionJob({userId:input.task.userId,contentId:input.task.id,contentType:input.task.taskType??"text",platform:"mock"}); await processDistributionJob(job.id); output={distributionJobId:job.id};
         } else {
           if (!generatedContent) throw new Error("Workflow save_result step requires generated content.");
           output = { saved: true, title: generatedContent.title };
