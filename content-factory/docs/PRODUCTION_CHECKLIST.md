@@ -9,7 +9,7 @@
 
 ## Database and access
 
-- [ ] Run `supabase migration list` and confirm migrations `0001`–`0003`.
+- [ ] Run `supabase migration list` and confirm migrations `0001`–`0017` in order before adding the next migration (`0018`).
 - [ ] Open `/api/health`; expect `{ status: "ok", database: true }`.
 - [ ] Register an email listed in `ADMIN_EMAILS`; confirm `/admin` loads.
 - [ ] Confirm a normal account is redirected away from `/admin`.
