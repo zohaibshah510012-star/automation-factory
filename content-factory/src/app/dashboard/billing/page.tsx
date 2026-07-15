@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowUpRightIcon, CreditCardIcon, RefreshCwIcon, WalletCardsIcon } from "lucide-react";
 
@@ -43,6 +42,8 @@ export default function BillingDashboard() {
   const [summary, setSummary] = useState<BillingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [checkoutUrl, setCheckoutUrl] = useState("");
+  const [pendingPaymentId, setPendingPaymentId] = useState("");
 
   async function load() {
     setLoading(true);
@@ -54,6 +55,33 @@ export default function BillingDashboard() {
     }
     setSummary(await response.json());
     setLoading(false);
+  }
+
+  async function checkout(planId: string) {
+    setMessage("");
+    const response = await fetch("/api/payments/checkout", {
+      method: "POST",
+      headers: { ...(await authorizationHeader()), "Content-Type": "application/json" },
+      body: JSON.stringify({ plan_id: planId, provider: "mock" }),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      setMessage(payload.error ?? "Unable to create checkout.");
+      return;
+    }
+    setPendingPaymentId(payload.payment.id);
+    setCheckoutUrl(payload.payment.checkout_url ?? "");
+    setMessage("Checkout created. Mock checkout is ready to verify.");
+  }
+
+  async function verifyCheckout() {
+    if (!pendingPaymentId) return;
+    const response = await fetch(`/api/payments/${pendingPaymentId}/verify`, {
+      method: "POST",
+      headers: await authorizationHeader(),
+    });
+    setMessage(response.ok ? "Payment verified and subscription activated." : "Unable to verify payment.");
+    await load();
   }
 
   useEffect(() => {
@@ -192,9 +220,15 @@ export default function BillingDashboard() {
               </div>
             ))}
             {!summary?.availablePlans.length && <p className="text-sm text-muted-foreground">No paid plans are available yet.</p>}
-            <Button render={<Link href="/dashboard/billing" />} disabled>
-              <ArrowUpRightIcon data-icon="inline-start" />
-              Checkout coming next
+            {summary?.availablePlans.map((item) => (
+              <Button key={item.id} variant="outline" onClick={() => void checkout(item.id)}>
+                <ArrowUpRightIcon data-icon="inline-start" />
+                Checkout {item.name}
+              </Button>
+            ))}
+            {checkoutUrl && <p className="text-sm text-muted-foreground">Checkout URL: {checkoutUrl}</p>}
+            <Button onClick={() => void verifyCheckout()} disabled={!pendingPaymentId}>
+              Verify mock payment
             </Button>
           </CardContent>
         </Card>
