@@ -9,6 +9,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { resolvePublishedPrompt, type TaskType } from "@/lib/prompt-engine";
 import type { ContentTask } from "@/lib/types";
 import { runAgent } from "@/lib/agent-runtime";
+import { commitCredits, refundCredits, reserveCredits } from "@/lib/credits-service";
 
 const taskStore = new Map<string, ContentTask>();
 
@@ -167,24 +168,6 @@ export async function listTasks(userId?: string): Promise<ContentTask[]> {
   return [...taskStore.values()].toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
-async function reserveCredits(task: ContentTask) {
-  const supabase = getSupabaseServerClient();
-  if (!supabase || !task.userId) throw new Error("BILLING_CONFIGURATION_REQUIRED");
-  const { data: agent } = await supabase.from("agents").select("credit_cost,provider_name,model").eq("agent_name", "Text Agent").eq("enabled", true).maybeSingle();
-  const amount = agent?.credit_cost ?? 25;
-  const { error } = await supabase.rpc("consume_credits", { p_user_id: task.userId, p_amount: amount, p_reason: `generation:${task.taskType}`, p_task_id: task.id });
-  if (error) throw new Error(error.message.includes("INSUFFICIENT_CREDITS") ? "INSUFFICIENT_CREDITS" : "CREDIT_RESERVATION_FAILED");
-  task.creditsCharged = amount;
-  await supabase.from("usage_history").insert({ user_id: task.userId, content_task_id: task.id, capability: task.taskType ?? "short_video_script", provider: agent?.provider_name, model: agent?.model, credits_charged: amount });
-}
-async function refundCredits(task: ContentTask) {
-  const supabase = getSupabaseServerClient(); if (!supabase || !task.userId || !task.creditsCharged) return;
-  const { data: profile } = await supabase.from("profiles").select("credits_balance").eq("id", task.userId).single();
-  const balance = (profile?.credits_balance ?? 0) + task.creditsCharged;
-  await supabase.from("profiles").update({ credits_balance: balance }).eq("id", task.userId);
-  await supabase.from("credit_transactions").insert({ user_id: task.userId, amount: task.creditsCharged, balance_after: balance, reason: "generation_refund", content_task_id: task.id });
-}
-
 export async function createTask(input: { topic: string; brief?: string; userId: string; taskType: TaskType; promptId?: string; agentId?: string }): Promise<ContentTask> {
   const createdAt = timestamp();
   const task: ContentTask = {
@@ -200,8 +183,6 @@ export async function createTask(input: { topic: string; brief?: string; userId:
     createdAt,
     updatedAt: createdAt,
   };
-  await syncTask(task);
-  await reserveCredits(task);
   await syncTask(task);
   taskStore.set(task.id, task);
   await syncGenerationStatus(task);
@@ -221,6 +202,8 @@ export async function runTask(taskId: string) {
   console.info("[automation-factory] workflow_started", { taskId: task.id, taskType: task.taskType });
 
   try {
+    const pricing = await reserveCredits(task);
+    await syncTask(task);
     const [providers, prompt] = await Promise.all([Promise.resolve(getAiProviders()), resolvePublishedPrompt({ taskType: task.taskType ?? "short_video_script", topic: task.topic, brief: task.brief, userId: task.userId, promptId: task.promptId })]);
     const agent = await runAgent(task.id, {
       task,
@@ -248,6 +231,7 @@ export async function runTask(taskId: string) {
 
     task.status = "completed";
     task.updatedAt = timestamp();
+    await commitCredits(task, pricing);
     await syncTask(task);
     await syncContentPack(task);
     await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_completed", task_id: task.id, metadata: { provider: getActiveProviderName() } });
@@ -262,7 +246,6 @@ export async function runTask(taskId: string) {
     task.error = userFacingGenerationError(error);
     task.updatedAt = timestamp();
     await refundCredits(task);
-    task.creditsCharged = 0;
     await syncTask(task);
     await syncGenerationStatus(task);
     await getSupabaseServerClient()?.from("system_logs").insert({ level: "error", event: "task_failed", task_id: task.id, metadata: { type: getProviderErrorType(error) } });
