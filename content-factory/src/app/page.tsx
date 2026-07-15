@@ -13,6 +13,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TrackClicks, TrackPageView } from "@/components/product-event-tracker";
 import {
   Card,
   CardContent,
@@ -97,6 +98,8 @@ const faqs = [
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
+      <TrackPageView surface="landing" properties={{ page: "home" }} />
+      <TrackClicks surface="landing" />
       <header className="border-b bg-background/95">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link className="flex items-center gap-2 font-semibold" href="/">
@@ -111,7 +114,7 @@ export default function LandingPage() {
             <Link href="/showcase">Demo 案例</Link>
             <a href="#faq">FAQ</a>
           </nav>
-          <Button render={<Link href="/dashboard/studio" />}>
+          <Button data-analytics-event="cta_click" data-analytics-label="header_free_generate" render={<Link href="/dashboard/studio" />}>
             免费生成
             <ArrowRightIcon data-icon="inline-end" />
           </Button>
@@ -132,11 +135,11 @@ export default function LandingPage() {
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button render={<Link href="/dashboard/studio" />} size="lg">
+            <Button data-analytics-event="cta_click" data-analytics-label="hero_free_drama" render={<Link href="/dashboard/studio" />} size="lg">
               免费生成第一部短剧
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
-            <Button render={<Link href="/showcase" />} size="lg" variant="outline">
+            <Button data-analytics-event="cta_click" data-analytics-label="hero_showcase" render={<Link href="/showcase" />} size="lg" variant="outline">
               先看 Demo 案例
             </Button>
           </div>
@@ -188,7 +191,7 @@ export default function LandingPage() {
                 视频片段入口
               </div>
             </div>
-            <Button render={<Link href="/showcase" />} variant="outline">
+            <Button data-analytics-event="cta_click" data-analytics-label="demo_showcase" render={<Link href="/showcase" />} variant="outline">
               查看完整 Demo Showcase
               <ArrowRightIcon data-icon="inline-end" />
             </Button>

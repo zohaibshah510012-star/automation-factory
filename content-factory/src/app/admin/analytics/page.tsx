@@ -19,6 +19,20 @@ type AnalyticsData = {
   grossProfit: number;
   grossMargin: number;
   providerUsage: Array<{ provider: string; model: string | null; credits: number; requests: number; estimatedCost: number }>;
+  productAnalytics: {
+    eventCounts: Record<string, number>;
+    recentEvents: Array<{ event_name: string; surface: string; path: string | null; created_at: string }>;
+    funnel: {
+      pageView: number;
+      ctaClick: number;
+      signupComplete: number;
+      templateSelect: number;
+      taskCreate: number;
+      taskComplete: number;
+      upgradeClick: number;
+    };
+  };
+  feedback: { total: number; averageSatisfaction: number; newCount: number };
 };
 
 async function authHeaders() {
@@ -52,6 +66,15 @@ export default function Analytics() {
     { label: "Users", value: data?.users ?? "-", helper: `${data?.revenue.activeSubscriptions ?? 0} active subscriptions`, icon: UsersIcon },
     { label: "Credits consumed", value: data?.credits.consumed ?? "-", helper: `${currency(data?.credits.estimatedValue ?? 0)} credit value`, icon: BarChart3Icon },
   ];
+  const funnel = [
+    { label: "Page views", value: data?.productAnalytics.funnel.pageView ?? 0 },
+    { label: "CTA clicks", value: data?.productAnalytics.funnel.ctaClick ?? 0 },
+    { label: "Signup complete", value: data?.productAnalytics.funnel.signupComplete ?? 0 },
+    { label: "Template select", value: data?.productAnalytics.funnel.templateSelect ?? 0 },
+    { label: "Task create", value: data?.productAnalytics.funnel.taskCreate ?? 0 },
+    { label: "Task complete", value: data?.productAnalytics.funnel.taskComplete ?? 0 },
+    { label: "Upgrade click", value: data?.productAnalytics.funnel.upgradeClick ?? 0 },
+  ];
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 p-6">
@@ -81,6 +104,57 @@ export default function Analytics() {
             </CardContent>
           </Card>
         ))}
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Product funnel</CardTitle>
+            <CardDescription>Lightweight Customer Validation events from landing, product, and billing.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Event</TableHead>
+                  <TableHead>Count</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {funnel.map((row) => (
+                  <TableRow key={row.label}>
+                    <TableCell>{row.label}</TableCell>
+                    <TableCell>{row.value}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>User feedback</CardTitle>
+            <CardDescription>Customer satisfaction and open feedback queue.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">Average satisfaction</span>
+              <Badge variant="secondary">{data?.feedback.averageSatisfaction ?? 0}/5</Badge>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">Total feedback</span>
+              <span className="text-sm font-medium">{data?.feedback.total ?? 0}</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">New items</span>
+              <span className="text-sm font-medium">{data?.feedback.newCount ?? 0}</span>
+            </div>
+            <Button render={<a href="/admin/feedback" />} variant="outline">
+              View feedback
+            </Button>
+          </CardContent>
+        </Card>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1fr_22rem]">

@@ -10,6 +10,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TrackClicks, TrackPageView } from "@/components/product-event-tracker";
 import {
   Card,
   CardContent,
@@ -71,6 +72,8 @@ const demoAssets = [
 export default function TemplateGalleryPage() {
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-8 p-6">
+      <TrackPageView eventName="template_view" surface="templates" properties={{ page: "template_gallery" }} />
+      <TrackClicks surface="templates" />
       <header className="grid gap-6 rounded-2xl bg-muted/50 p-6 md:grid-cols-[1fr_auto] md:items-end">
         <div className="flex flex-col gap-3">
           <Badge className="w-fit" variant="secondary">
@@ -81,7 +84,7 @@ export default function TemplateGalleryPage() {
             这里把已经上线的 AI 能力包装成用户能理解、能选择、能购买的产品入口。新用户可以先看 Demo，再进入对应工作台生成第一个作品。
           </p>
         </div>
-        <Button render={<Link href="/dashboard/studio?template=drama" />}>
+        <Button data-analytics-event="template_select" data-analytics-label="hero_drama" render={<Link href="/dashboard/studio?template=drama" />}>
           从短剧模板开始
           <SparklesIcon data-icon="inline-end" />
         </Button>
@@ -106,7 +109,7 @@ export default function TemplateGalleryPage() {
                   </div>
                 ))}
               </div>
-              <Button render={<Link href={template.href} />} variant="outline">
+              <Button data-analytics-event="template_select" data-analytics-label={template.title} render={<Link href={template.href} />} variant="outline">
                 使用模板
                 <ArrowRightIcon data-icon="inline-end" />
               </Button>

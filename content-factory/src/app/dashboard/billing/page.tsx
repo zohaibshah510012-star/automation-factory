@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress, ProgressLabel } from "@/components/ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { TrackPageView, trackProductEvent } from "@/components/product-event-tracker";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type BillingSummary = {
@@ -59,6 +60,7 @@ export default function BillingDashboard() {
 
   async function checkout(planId: string) {
     setMessage("");
+    await trackProductEvent("upgrade_click", { planId }, "billing");
     const response = await fetch("/api/payments/checkout", {
       method: "POST",
       headers: { ...(await authorizationHeader()), "Content-Type": "application/json" },
@@ -98,6 +100,7 @@ export default function BillingDashboard() {
 
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
+      <TrackPageView eventName="billing_view" surface="billing" properties={{ page: "dashboard_billing" }} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">Billing</p>

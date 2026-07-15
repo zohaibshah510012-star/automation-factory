@@ -1,4 +1,5 @@
 import { getImageProvider, getImageProviderName } from "@/lib/ai-providers";
+import { trackProductEvent } from "@/lib/product-analytics";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type ImageTask = { id: string; userId: string; prompt: string; provider: string | null; model: string | null; size: string | null; status: "pending" | "running" | "completed" | "failed"; resultUrl: string | null; metadata: Record<string, unknown>; error: string | null; createdAt: string; updatedAt: string };
@@ -31,6 +32,7 @@ export async function runImageTask(taskId: string) {
     const { data: completed, error: completedError } = await supabase.from("image_tasks").update({ status: "completed", provider_name: image.provider, model: image.model, result_url: image.url, result: { url: image.url, provider: image.provider, model: image.model }, metadata: image.metadata ?? {}, updated_at: completedAt }).eq("id", taskId).select().single();
     if (completedError || !completed) throw new Error(`Unable to save image result: ${completedError?.message ?? "unknown error"}`);
     await supabase.from("system_logs").insert({ level: "info", event: "image_task_completed", user_id: task.userId, metadata: { imageTaskId: task.id, provider: image.provider, model: image.model } });
+    await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "image", path: "image-service", properties: { taskId: task.id, taskType: "image", provider: image.provider, model: image.model } });
     return mapTask(completed as ImageTaskRow);
   } catch (exception) {
     const message = exception instanceof Error ? exception.message : "Image generation failed.";

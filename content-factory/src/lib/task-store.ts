@@ -13,6 +13,7 @@ import type { ContentTask } from "@/lib/types";
 import { runAgent } from "@/lib/agent-runtime";
 import { commitCredits, refundCredits, reserveCredits } from "@/lib/credits-service";
 import { createDramaSceneImages } from "@/lib/drama-images";
+import { trackProductEvent } from "@/lib/product-analytics";
 
 const taskStore = new Map<string, ContentTask>();
 
@@ -241,6 +242,7 @@ export async function runTask(taskId: string) {
     await commitCredits(task, pricing);
     await syncTask(task);
     await syncContentPack(task);
+    await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, provider: getActiveProviderName() } });
     await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_completed", task_id: task.id, metadata: { provider: getActiveProviderName() } });
     console.info("[automation-factory] workflow_completed", { taskId: task.id });
   } catch (error) {

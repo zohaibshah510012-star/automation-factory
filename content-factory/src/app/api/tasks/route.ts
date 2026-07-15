@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createTask, listTasks, runTask } from "@/lib/task-store";
+import { trackProductEvent } from "@/lib/product-analytics";
 import { requireUser } from "@/lib/request-auth";
 import type { TaskType } from "@/lib/prompt-engine";
 
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
   try {
     const user = await requireUser(request);
     const task = await createTask({ topic, brief: body.brief?.trim(), userId: user.id, taskType: body.taskType ?? "short_video_script", promptId: body.promptId, agentId: body.agentId });
+    await trackProductEvent({ eventName: "task_create", userId: user.id, surface: "product", path: "/api/tasks", properties: { taskId: task.id, taskType: task.taskType, topic: task.topic } });
     void runTask(task.id);
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {

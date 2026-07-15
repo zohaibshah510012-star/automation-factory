@@ -10,6 +10,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TrackClicks, TrackPageView } from "@/components/product-event-tracker";
 import {
   Card,
   CardContent,
@@ -37,6 +38,22 @@ const characters = [
     personality: "数据敏感，关注选题效率和转化结果。",
     visual: "增长分析师，白板、数据图、短视频后台界面。",
   },
+];
+
+const categories = ["短剧起号", "内容团队", "营销转化", "AI 工作流"];
+
+const generationFlow = [
+  { step: "选择模板", detail: "用户选择短剧创作模板，系统推荐剧情、角色、分镜结构。" },
+  { step: "输入主题", detail: "输入产品卖点或账号选题，例如“7天起号：AI 内容团队”。" },
+  { step: "生成资产", detail: "Workflow 依次生成剧情、角色、分镜，并衔接图片和视频任务。" },
+  { step: "复用结果", detail: "最终内容进入资产中心，可继续分发、复用或作为团队素材。" },
+];
+
+const outcomes = [
+  { label: "剧情结构", value: "1 条完整短剧主线" },
+  { label: "角色设定", value: "3 个可复用角色" },
+  { label: "分镜", value: "4 个可生产 Scene" },
+  { label: "媒体任务", value: "图片与视频状态可追踪" },
 ];
 
 const scenes = [
@@ -77,6 +94,8 @@ const scenes = [
 export default function ShowcasePage() {
   return (
     <main className="min-h-screen bg-background">
+      <TrackPageView surface="showcase" properties={{ page: "short_drama_showcase", category: "short_drama" }} />
+      <TrackClicks surface="showcase" />
       <header className="border-b">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link className="flex items-center gap-2 font-semibold" href="/">
@@ -85,7 +104,7 @@ export default function ShowcasePage() {
             </span>
             Automation Factory
           </Link>
-          <Button render={<Link href="/dashboard/studio?template=drama" />}>
+          <Button data-analytics-event="cta_click" data-analytics-label="showcase_header_generate" render={<Link href="/dashboard/studio?template=drama" />}>
             免费生成同款短剧
             <ArrowRightIcon data-icon="inline-end" />
           </Button>
@@ -101,12 +120,17 @@ export default function ShowcasePage() {
           <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
             这是一个无需登录即可查看的完整样例，展示 AI 短剧生成最终会沉淀出哪些结构化资产：剧情、角色、分镜、图片状态和视频结果。
           </p>
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <Badge key={category} variant="outline">{category}</Badge>
+            ))}
+          </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button render={<Link href="/dashboard/studio?template=drama" />} size="lg">
+            <Button data-analytics-event="cta_click" data-analytics-label="showcase_hero_generate" render={<Link href="/dashboard/studio?template=drama" />} size="lg">
               用体验 Credits 生成
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
-            <Button render={<Link href="/dashboard/templates" />} size="lg" variant="outline">
+            <Button data-analytics-event="cta_click" data-analytics-label="showcase_templates" render={<Link href="/dashboard/templates" />} size="lg" variant="outline">
               查看更多模板
             </Button>
           </div>
@@ -129,6 +153,26 @@ export default function ShowcasePage() {
             </div>
           </CardContent>
         </Card>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 py-14">
+        <div className="flex flex-col gap-3">
+          <h2 className="text-3xl font-semibold tracking-tight">生成流程展示</h2>
+          <p className="max-w-2xl text-muted-foreground">把用户从“我有一个想法”带到“我有一组可生产资产”。</p>
+        </div>
+        <div className="mt-8 grid gap-4 md:grid-cols-4">
+          {generationFlow.map((item, index) => (
+            <Card key={item.step}>
+              <CardHeader>
+                <Badge className="w-fit" variant="secondary">Step {index + 1}</Badge>
+                <CardTitle>{item.step}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-6 text-muted-foreground">{item.detail}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </section>
 
       <section className="border-y bg-muted/30">
@@ -188,6 +232,25 @@ export default function ShowcasePage() {
         </div>
       </section>
 
+      <section className="border-t bg-muted/30">
+        <div className="mx-auto max-w-7xl px-6 py-14">
+          <div className="flex flex-col gap-3">
+            <h2 className="text-3xl font-semibold tracking-tight">成果展示</h2>
+            <p className="max-w-2xl text-muted-foreground">Demo 用清晰结果帮助访客判断产品是否值得注册试用。</p>
+          </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-4">
+            {outcomes.map((outcome) => (
+              <Card key={outcome.label}>
+                <CardHeader>
+                  <CardTitle>{outcome.label}</CardTitle>
+                  <CardDescription>{outcome.value}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="bg-primary text-primary-foreground">
         <div className="mx-auto flex max-w-7xl flex-col gap-5 px-6 py-14 md:flex-row md:items-center md:justify-between">
           <div>
@@ -197,7 +260,7 @@ export default function ShowcasePage() {
               进入 Studio 后选择“短剧创作”，系统会自动推荐模板，并用体验 Credits 创建首次生成任务。
             </p>
           </div>
-          <Button render={<Link href="/dashboard/studio?template=drama" />} variant="secondary">
+          <Button data-analytics-event="cta_click" data-analytics-label="showcase_bottom_generate" render={<Link href="/dashboard/studio?template=drama" />} variant="secondary">
             免费生成
             <ArrowRightIcon data-icon="inline-end" />
           </Button>

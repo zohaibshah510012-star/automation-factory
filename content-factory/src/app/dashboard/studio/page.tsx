@@ -14,6 +14,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { TrackPageView, trackProductEvent } from "@/components/product-event-tracker";
 import {
   Card,
   CardAction,
@@ -189,6 +190,7 @@ export default function StudioPage() {
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-8 p-6">
+      <TrackPageView surface="studio" properties={{ page: "studio_onboarding", selectedTemplate }} />
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -198,6 +200,9 @@ export default function StudioPage() {
           <div className="flex flex-wrap gap-2">
             <Button render={<Link href="/showcase" />} variant="outline">
               查看 Demo
+            </Button>
+            <Button render={<Link href="/dashboard/feedback" />} variant="outline">
+              提交反馈
             </Button>
             <Button render={<Link href="/dashboard/templates" />} variant="outline">
               全部模板
@@ -222,7 +227,10 @@ export default function StudioPage() {
                   <button
                     className={`rounded-xl border bg-background p-4 text-left transition hover:bg-muted ${selectedTemplate === template.id ? "ring-2 ring-primary" : ""}`}
                     key={template.id}
-                    onClick={() => setSelectedTemplate(template.id)}
+                    onClick={() => {
+                      setSelectedTemplate(template.id);
+                      void trackProductEvent("template_select", { template: template.id, title: template.title }, "studio");
+                    }}
                     type="button"
                   >
                     <template.icon />
