@@ -1,7 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ContentAsset, ContentPack, ContentTask } from "@/lib/types";
 
-type WorkflowStepType = "prompt" | "ai_generate" | "image_generate" | "video_generate" | "save_result";
+type WorkflowStepType = "prompt" | "ai_generate" | "story_generate" | "scene_generate" | "image_generate" | "video_generate" | "save_result";
 
 type Workflow = {
   id: string;
@@ -47,7 +47,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function getStepType(step: WorkflowStep, isLastStep: boolean): WorkflowStepType {
   const configuredType = asRecord(step.config).type;
-  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "image_generate" || configuredType === "video_generate" || configuredType === "save_result") {
+  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "story_generate" || configuredType === "scene_generate" || configuredType === "image_generate" || configuredType === "video_generate" || configuredType === "save_result") {
     return configuredType;
   }
 
@@ -58,17 +58,18 @@ function getStepType(step: WorkflowStep, isLastStep: boolean): WorkflowStepType 
   return "prompt";
 }
 
-async function requireActiveWorkflow() {
+async function requireActiveWorkflow(task: ContentTask) {
   const supabase = getSupabaseServerClient();
   if (!supabase) throw new Error("Workflow Executor requires Supabase configuration.");
 
-  const { data: workflow, error: workflowError } = await supabase
+  let workflowQuery = supabase
     .from("workflows")
     .select("id,name")
     .eq("enabled", true)
     .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+  if (task.taskType === "drama") workflowQuery = workflowQuery.eq("name", "short_drama_pipeline");
+  const { data: workflow, error: workflowError } = await workflowQuery.maybeSingle();
 
   if (workflowError) throw new Error(`Unable to load workflow: ${workflowError.message}`);
   if (!workflow) throw new Error("No enabled workflow is available for this task.");
@@ -96,7 +97,7 @@ async function failWorkflowRun(workflowRunId: string, error: unknown) {
 }
 
 export async function executeWorkflow(input: WorkflowExecutionInput): Promise<WorkflowExecutionResult> {
-  const { supabase, workflow, steps } = await requireActiveWorkflow();
+  const { supabase, workflow, steps } = await requireActiveWorkflow(input.task);
   const startedAt = new Date().toISOString();
   const { data: workflowRun, error: workflowRunError } = await supabase
     .from("workflow_runs")
@@ -126,8 +127,10 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
       const stepType = getStepType(step, index === steps.length - 1);
       const stepInput = stepType === "prompt"
         ? { prompt: input.prompt.name, version: input.prompt.version }
-        : stepType === "ai_generate"
+        : stepType === "ai_generate" || stepType === "story_generate"
           ? { topic: input.task.topic, prompt: input.prompt.name }
+          : stepType === "scene_generate"
+            ? { topic: input.task.topic, hasStory: Boolean(generatedContent) }
           : stepType === "image_generate"
             ? { topic: input.task.topic, prompt: input.prompt.name }
             : stepType === "video_generate"
@@ -155,10 +158,13 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
         let output: Record<string, unknown>;
         if (stepType === "prompt") {
           output = { systemPrompt: input.prompt.systemPrompt, userPrompt: input.prompt.userPrompt };
-        } else if (stepType === "ai_generate") {
+        } else if (stepType === "ai_generate" || stepType === "story_generate") {
           generatedContent = await input.generateContent();
           generatedContent.assets = generatedAssets;
-          output = { title: generatedContent.title, script: generatedContent.script, storyboard: generatedContent.storyboard };
+          output = stepType === "story_generate" ? { title: generatedContent.title, story: generatedContent.script } : { title: generatedContent.title, script: generatedContent.script, storyboard: generatedContent.storyboard };
+        } else if (stepType === "scene_generate") {
+          if (!generatedContent) throw new Error("Workflow scene_generate step requires a story result.");
+          output = { scenes: generatedContent.storyboard, story: generatedContent.script };
         } else if (stepType === "image_generate") {
           if (!input.generateImage) throw new Error("Workflow image_generate step requires an image provider.");
           const image = await input.generateImage();

@@ -47,18 +47,18 @@ async function loadTaskAgent(taskId: string): Promise<ConfiguredAgent | undefine
 
   const { data: task, error: taskError } = await supabase
     .from("content_tasks")
-    .select("input_payload")
+    .select("input_payload,task_type")
     .eq("id", taskId)
     .maybeSingle();
   if (taskError) throw new Error(`Unable to load task agent configuration: ${taskError.message}`);
 
   const agentId = getAgentId(task?.input_payload);
-  if (!agentId) return undefined;
+  if (!agentId && task?.task_type !== "drama") return undefined;
 
   const { data: agent, error: agentError } = await supabase
     .from("agents")
     .select("id,agent_name,provider_name,model,prompt_template_name")
-    .eq("id", agentId)
+    .eq(agentId ? "id" : "agent_name", agentId ?? "Short Drama Producer")
     .eq("enabled", true)
     .maybeSingle();
   if (agentError) throw new Error(`Unable to load agent: ${agentError.message}`);
