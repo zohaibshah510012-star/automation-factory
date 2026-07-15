@@ -95,6 +95,7 @@ async function syncTask(task: ContentTask) {
     brief: task.brief ?? null,
     task_type: task.taskType ?? "short_video_script",
     input_payload: task.agentId ? { agent_id: task.agentId } : {},
+    prompt_template_id: task.promptId ?? null,
     credits_charged: task.creditsCharged ?? 0,
     status: task.status,
     title: task.title ?? null,
