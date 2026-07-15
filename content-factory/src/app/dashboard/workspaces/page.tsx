@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PlusIcon, RefreshCwIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -36,28 +36,28 @@ export default function WorkspacesPage() {
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     const response = await fetch("/api/workspaces", { headers: await authHeaders(), cache: "no-store" });
     if (!response.ok) return setMessage("Please sign in to view workspaces.");
     const data = await response.json();
     setWorkspaces(data.workspaces ?? []);
     const firstWorkspace = data.workspaces?.[0]?.workspaces?.id;
     if (firstWorkspace && !activeWorkspaceId) setActiveWorkspaceId(firstWorkspace);
-  }
+  }, [activeWorkspaceId]);
 
-  async function loadMembers(workspaceId: string) {
+  const loadMembers = useCallback(async (workspaceId: string) => {
     if (!workspaceId) return;
     const response = await fetch(`/api/workspaces/${workspaceId}/members`, { headers: await authHeaders(), cache: "no-store" });
     if (response.ok) setMembers((await response.json()).members ?? []);
-  }
-
-  useEffect(() => {
-    void load();
   }, []);
 
   useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
     void loadMembers(activeWorkspaceId);
-  }, [activeWorkspaceId]);
+  }, [activeWorkspaceId, loadMembers]);
 
   async function create(event: FormEvent) {
     event.preventDefault();

@@ -1,0 +1,77 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: automation-factory-web:latest
+    container_name: automation-factory-web
+    restart: unless-stopped
+    env_file:
+      - path: .env.production.example
+        required: true
+      - path: .env.production
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "3000:3000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - automation-factory
+
+  database:
+    image: postgres:17-alpine
+    profiles: ["future"]
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: automation_factory
+      POSTGRES_USER: automation_factory
+      POSTGRES_PASSWORD: change-me
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - automation-factory
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["future"]
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    networks:
+      - automation-factory
+
+  worker:
+    image: automation-factory-web:latest
+    profiles: ["future"]
+    restart: unless-stopped
+    env_file:
+      - path: .env.production.example
+        required: true
+      - path: .env.production
+        required: false
+    environment:
+      NODE_ENV: production
+      WORKER_MODE: "true"
+    command: ["node", "server.js"]
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - automation-factory
+
+networks:
+  automation-factory:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { CoinsIcon, PencilIcon, PlusIcon, RefreshCwIcon, SaveIcon, ToggleLeftIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -111,7 +111,7 @@ export default function AdminBillingPage() {
     });
   }, []);
 
-  async function load() {
+  const load = useCallback(async () => {
     if (!token) return;
     setLoading(true);
 
@@ -137,11 +137,11 @@ export default function AdminBillingPage() {
     setAccounts(creditsData.accounts ?? []);
     setTransactions(creditsData.transactions ?? []);
     setLoading(false);
-  }
+  }, [authHeaders, token]);
 
   useEffect(() => {
     void load();
-  }, [token]);
+  }, [load]);
 
   function editPlan(plan: Plan) {
     setEditingPlanId(plan.id);

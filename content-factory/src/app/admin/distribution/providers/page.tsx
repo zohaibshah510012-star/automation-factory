@@ -1,1 +1,73 @@
-"use client";import{useEffect,useState}from"react";import{getSupabaseBrowserClient}from"@/lib/supabase/browser";type P={id:string;platform:string;provider_type:string;mode:string;enabled:boolean};export default function Providers(){const[p,setP]=useState<P[]>([]),[f,setF]=useState<any>({platform:"",provider_type:"mock",mode:"sandbox",enabled:true});const auth=async()=>{const s=await getSupabaseBrowserClient()?.auth.getSession();return{Authorization:`Bearer ${s?.data.session?.access_token??""}`,"Content-Type":"application/json"}};const load=async()=>{const r=await fetch("/api/admin/distribution/providers",{headers:await auth()});if(r.ok)setP((await r.json()).providers)};useEffect(()=>{void load()},[]);const save=async()=>{await fetch("/api/admin/distribution/providers",{method:"POST",headers:await auth(),body:JSON.stringify(f)});setF({platform:"",provider_type:"mock",mode:"sandbox",enabled:true});void load()};const update=async(x:P)=>{await fetch(`/api/admin/distribution/providers/${x.id}`,{method:"PATCH",headers:await auth(),body:JSON.stringify({...x,enabled:!x.enabled})});void load()};const del=async(id:string)=>{await fetch(`/api/admin/distribution/providers/${id}`,{method:"DELETE",headers:await auth()});void load()};return <main className="mx-auto max-w-6xl p-6"><h1 className="text-3xl font-semibold">Distribution Providers</h1><div className="mt-6 flex gap-2"><input className="border p-2" placeholder="platform" value={f.platform} onChange={e=>setF({...f,platform:e.target.value})}/><input className="border p-2" value={f.provider_type} onChange={e=>setF({...f,provider_type:e.target.value})}/><select className="border p-2" value={f.mode} onChange={e=>setF({...f,mode:e.target.value})}><option>sandbox</option><option>production</option></select><button className="rounded bg-primary px-3 text-primary-foreground" onClick={()=>void save()}>新增</button></div><div className="mt-6 divide-y rounded border">{p.map(x=><div className="flex items-center gap-4 p-3" key={x.id}><span>{x.platform}</span><span>{x.provider_type}</span><span>{x.mode}</span><span>{x.enabled?"enabled":"disabled"}</span><button onClick={()=>void update(x)}>启用/禁用</button><button onClick={()=>void del(x.id)}>删除</button></div>)}</div></main>}
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+type ProviderConfig = { id: string; platform: string; provider_type: string; mode: string; enabled: boolean };
+
+async function authHeaders() {
+  const session = await getSupabaseBrowserClient()?.auth.getSession();
+  return { Authorization: `Bearer ${session?.data.session?.access_token ?? ""}`, "Content-Type": "application/json" };
+}
+
+export default function Providers() {
+  const [providers, setProviders] = useState<ProviderConfig[]>([]);
+  const [form, setForm] = useState({ platform: "", provider_type: "mock", mode: "sandbox", enabled: true });
+
+  const load = useCallback(async () => {
+    const response = await fetch("/api/admin/distribution/providers", { headers: await authHeaders(), cache: "no-store" });
+    if (response.ok) setProviders((await response.json()).providers ?? []);
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function save() {
+    await fetch("/api/admin/distribution/providers", { method: "POST", headers: await authHeaders(), body: JSON.stringify(form) });
+    setForm({ platform: "", provider_type: "mock", mode: "sandbox", enabled: true });
+    void load();
+  }
+
+  async function toggle(provider: ProviderConfig) {
+    await fetch(`/api/admin/distribution/providers/${provider.id}`, {
+      method: "PATCH",
+      headers: await authHeaders(),
+      body: JSON.stringify({ ...provider, enabled: !provider.enabled }),
+    });
+    void load();
+  }
+
+  async function remove(id: string) {
+    await fetch(`/api/admin/distribution/providers/${id}`, { method: "DELETE", headers: await authHeaders() });
+    void load();
+  }
+
+  return (
+    <main className="mx-auto max-w-6xl p-6">
+      <h1 className="text-3xl font-semibold">Distribution Providers</h1>
+      <div className="mt-6 flex flex-wrap gap-2">
+        <input className="border p-2" placeholder="platform" value={form.platform} onChange={(event) => setForm({ ...form, platform: event.target.value })} />
+        <input className="border p-2" value={form.provider_type} onChange={(event) => setForm({ ...form, provider_type: event.target.value })} />
+        <select className="border p-2" value={form.mode} onChange={(event) => setForm({ ...form, mode: event.target.value })}>
+          <option>sandbox</option>
+          <option>production</option>
+        </select>
+        <button className="rounded bg-primary px-3 text-primary-foreground" onClick={() => void save()}>Add</button>
+      </div>
+      <div className="mt-6 divide-y rounded border">
+        {providers.map((provider) => (
+          <div className="flex items-center gap-4 p-3" key={provider.id}>
+            <span>{provider.platform}</span>
+            <span>{provider.provider_type}</span>
+            <span>{provider.mode}</span>
+            <span>{provider.enabled ? "enabled" : "disabled"}</span>
+            <button onClick={() => void toggle(provider)}>Enable/Disable</button>
+            <button onClick={() => void remove(provider.id)}>Delete</button>
+          </div>
+        ))}
+      </div>
+    </main>
+  );
+}

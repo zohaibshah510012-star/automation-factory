@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { trackProductEvent, type ProductEventName } from "@/lib/product-analytics";
+import { checkRateLimit, getClientIp } from "@/lib/rate-limit";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -25,15 +26,32 @@ async function optionalUserId(request: Request) {
   return data.user?.id ?? null;
 }
 
+function safeString(value: unknown, maxLength: number) {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length <= maxLength ? trimmed : trimmed.slice(0, maxLength);
+}
+
+function safeProperties(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const json = JSON.stringify(value);
+  if (json.length > 4_000) return { truncated: true };
+  return value as Record<string, unknown>;
+}
+
 export async function POST(request: Request) {
   try {
+    const rate = checkRateLimit({ key: `analytics:${getClientIp(request)}`, limit: 120, windowMs: 60_000 });
+    if (!rate.allowed) return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 });
+
     const body = await request.json() as {
       eventName?: ProductEventName;
-      anonymousId?: string;
-      surface?: string;
-      path?: string;
-      referrer?: string | null;
-      properties?: Record<string, unknown>;
+      anonymousId?: unknown;
+      surface?: unknown;
+      path?: unknown;
+      referrer?: unknown;
+      properties?: unknown;
     };
 
     if (!body.eventName || !allowedEvents.has(body.eventName)) {
@@ -43,12 +61,12 @@ export async function POST(request: Request) {
     await trackProductEvent({
       eventName: body.eventName,
       userId: await optionalUserId(request),
-      anonymousId: body.anonymousId,
-      surface: body.surface ?? "web",
-      path: body.path,
-      referrer: body.referrer,
+      anonymousId: safeString(body.anonymousId, 128),
+      surface: safeString(body.surface, 64) ?? "web",
+      path: safeString(body.path, 512),
+      referrer: safeString(body.referrer, 512),
       userAgent: request.headers.get("user-agent"),
-      properties: body.properties ?? {},
+      properties: safeProperties(body.properties),
     });
 
     return NextResponse.json({ ok: true });

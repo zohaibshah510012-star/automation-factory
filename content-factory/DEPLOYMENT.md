@@ -1,47 +1,129 @@
-# Cloud Deployment Guide
+# Automation Factory Deployment Guide
 
-## Build check
+Production baseline: migration `0001_content_factory.sql` through `0024_beta_operations.sql`.
 
-    pnpm install --frozen-lockfile
-    pnpm build
+## 1. Build verification
 
-Deploy the content-factory directory as the application root. The project uses Next.js and requires a Node.js runtime compatible with the version declared in package.json.
+```bash
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm build
+```
 
-## Required environment variables
+The application root is `content-factory`. Next.js is configured with `output: "standalone"` for PM2 and Docker deployments.
 
-Set these only in the cloud provider's encrypted environment-variable settings. Do not commit .env.local.
+## 2. Required environment
 
-| Variable | Required when | Purpose |
+Copy `.env.production.example` to `.env.production` for Docker or configure the same variables in your server/hosting secret store.
+
+Never expose server secrets with `NEXT_PUBLIC_`.
+
+| Variable | Required | Purpose |
 | --- | --- | --- |
-| NEXT_PUBLIC_SUPABASE_URL | Always for persistence | Supabase project URL |
-| NEXT_PUBLIC_SUPABASE_ANON_KEY | Always for customer authentication | Supabase publishable/anon key |
-| SUPABASE_SERVICE_ROLE_KEY | Always for persistence | Server-only task and result writes |
-| ADMIN_EMAILS | Required to bootstrap the first admin | Comma-separated administrator emails |
-| AI_PROVIDER | Always | openai, gemini, deepseek, alternative, or local |
-| AI_IMAGE_PROVIDER | Optional image generation | openai, flux, gemini, alternative, or local |
-| AI_VIDEO_PROVIDER | Optional video generation | runway, kling, openai, or local |
-| DEEPSEEK_API_KEY | AI_PROVIDER=deepseek | DeepSeek text generation |
-| DEEPSEEK_BASE_URL | Optional | Defaults to https://api.deepseek.com |
-| DEEPSEEK_TEXT_MODEL | Optional | Defaults to deepseek-chat |
-| OPENAI_API_KEY | AI_PROVIDER=openai | OpenAI text, image, and voice |
-| GEMINI_API_KEY | AI_PROVIDER=gemini | Gemini text and optional image generation |
-| FLUX_API_KEY | AI_IMAGE_PROVIDER=flux | Flux image provider token |
-| FLUX_API_BASE_URL | AI_IMAGE_PROVIDER=flux | Flux image generation endpoint |
-| RUNWAY_API_KEY | AI_VIDEO_PROVIDER=runway | Runway video provider token |
-| RUNWAY_API_BASE_URL | AI_VIDEO_PROVIDER=runway | Runway video endpoint |
-| KLING_API_KEY | AI_VIDEO_PROVIDER=kling | Kling video provider token |
-| KLING_API_BASE_URL | AI_VIDEO_PROVIDER=kling | Kling video endpoint |
-| CREDIT_PRICE_USD | Optional analytics | Internal revenue estimate per credit |
-| PROVIDER_COST_PER_CREDIT_USD | Optional analytics | Internal provider cost estimate per credit |
+| `NODE_ENV` | Yes | Must be `production` |
+| `NEXT_PUBLIC_APP_URL` | Yes | Public app URL |
+| `ADMIN_EMAILS` | Yes | Bootstrap admin emails |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Public Supabase URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Public Supabase anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Server-only Supabase writes |
+| `AI_PROVIDER` | Yes | Text provider |
+| `AI_IMAGE_PROVIDER` | Optional | Image provider |
+| `AI_VIDEO_PROVIDER` | Optional | Video provider |
+| `DEEPSEEK_API_KEY` / `OPENAI_API_KEY` | Provider-specific | AI provider credentials |
+| `STRIPE_SECRET_KEY` / `PAYPAL_CLIENT_SECRET` | Payment-specific | Future real payment providers |
+| `SMTP_*` / `EMAIL_FROM` | Optional | Email delivery |
+| `STORAGE_BUCKET` | Optional | Supabase storage bucket |
+| `WEBHOOK_SIGNING_SECRET` | Optional | Webhook verification |
+| `CRON_SECRET` | Optional | Cron/worker trigger protection |
 
-Provider-specific model settings are documented in .env.example and .env.local.example.
+## 3. Supabase migrations
 
-## Supabase setup
+Apply all files in lexical order:
 
-Apply every file in `supabase/migrations` in lexical order before enabling production traffic. The current commercial launch baseline runs from `0001_content_factory.sql` through `0022_workspace_rls_fix.sql`.
+```bash
+supabase migration list
+supabase db push
+supabase migration list
+```
 
-The backend uses SUPABASE_SERVICE_ROLE_KEY; never expose this key to browser code or prefix it with NEXT_PUBLIC_.
+Expected local latest migration:
 
-## Deployment scope
+```text
+0024_beta_operations.sql
+```
 
-The current launch baseline includes content generation, credits, billing, payment framework, distribution, short drama, and workspace foundations. Real payment providers and paid media providers should remain disabled until sandbox credentials and webhook contracts are verified.
+Key tables/RPCs expected after migration:
+
+- `profiles`
+- `credit_transactions`
+- `plans`
+- `subscriptions`
+- `subscription_adjustments`
+- `payment_providers`
+- `payments`
+- `payment_events`
+- `distribution_jobs`
+- `distribution_providers`
+- `short_drama_assets`
+- `short_drama_scenes`
+- `product_events`
+- `user_feedback`
+- `workspaces`
+- `workspace_members`
+- `grant_subscription_credits`
+- `admin_adjust_user_credits`
+
+## 4. PM2 deployment
+
+```bash
+pnpm install --frozen-lockfile
+pnpm build
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 status automation-factory
+```
+
+Health check:
+
+```bash
+curl -fsS http://127.0.0.1:3000/api/health
+```
+
+## 5. Docker deployment
+
+```bash
+cp .env.production.example .env.production
+# Fill .env.production with real values.
+docker compose up -d --build
+docker compose ps
+```
+
+The compose file starts the `web` service and reserves future profiles for `database`, `redis`, and `worker`. It loads `.env.production.example` for structure and `.env.production` as an optional local override.
+
+## 6. Nginx / HTTPS
+
+Use `deployment/nginx/site.conf.example` as the site template.
+
+Required production behavior:
+
+- Reverse proxy to `http://127.0.0.1:3000`
+- WebSocket upgrade headers
+- Gzip enabled
+- Security headers enabled
+- HTTPS certificate configured through Baota, certbot, or provider-managed SSL
+
+## 7. Admin validation
+
+After login with an admin email:
+
+- `/admin/system`
+- `/admin/checklist`
+- `/admin/monitor`
+- `/admin/health`
+- `/admin/tasks`
+- `/admin/billing`
+- `/admin/payments`
+- `/admin/analytics`
+
+Use `/admin/checklist` as the production launch gate.

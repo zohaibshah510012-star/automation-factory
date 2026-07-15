@@ -42,7 +42,15 @@ async function listDramas(userId?: string) {
   return rows.map(row => ({ ...row, progress: progress.get(row.id) ?? { total: 0, completed: 0, failed: 0 } }));
 }
 
-export async function listUserDramas(userId: string) { return listDramas(userId).then(rows => rows.map(({ user_id, ...drama }) => drama)); }
+export async function listUserDramas(userId: string) {
+  return listDramas(userId).then(rows => rows.map(drama => ({
+    id: drama.id,
+    title: drama.title,
+    status: drama.status,
+    created_at: drama.created_at,
+    progress: drama.progress,
+  })));
+}
 export async function listAllDramas() { return listDramas(); }
 
 export async function getDramaAsset(id: string, userId?: string) {
