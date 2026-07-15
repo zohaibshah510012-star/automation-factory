@@ -1,0 +1,4 @@
+alter table public.drama_scene_images add column if not exists video_prompt text, add column if not exists video_task_id uuid references public.video_tasks(id) on delete set null;
+create unique index if not exists drama_scene_images_video_task_once on public.drama_scene_images(video_task_id) where video_task_id is not null;
+update public.workflow_steps set position=6 where workflow_id=(select id from public.workflows where name='short_drama_pipeline') and position=5 and config->>'type'='save_result';
+insert into public.workflow_steps(workflow_id,position,agent_name,enabled,config) select id,5,'Short Drama Producer',true,'{"name":"Scene videos","type":"video_generate","config":{}}'::jsonb from public.workflows where name='short_drama_pipeline' on conflict(workflow_id,position) do update set config=excluded.config,enabled=true;
