@@ -1,0 +1,10 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+type Provider={id:string;provider_name:string;model:string|null;base_url:string|null;secret_ref:string|null;enabled:boolean};
+export default function ProviderStatusPage(){const[providers,setProviders]=useState<Provider[]>([]);const[message,setMessage]=useState("");useEffect(()=>{void(async()=>{const session=await getSupabaseBrowserClient()?.auth.getSession();const response=await fetch("/api/admin/providers",{headers:{Authorization:`Bearer ${session?.data.session?.access_token??""}`}});if(response.ok)setProviders((await response.json()).data);else setMessage("无法读取 Provider 配置。");})();},[]);return <main className="mx-auto flex max-w-5xl flex-col gap-6 p-6"><header><p className="text-sm text-muted-foreground">Admin Console</p><h1 className="text-3xl font-semibold">Provider 状态</h1><p className="mt-2 text-sm text-muted-foreground">图片任务使用 AI_IMAGE_PROVIDER 指定的 Provider；密钥仅通过服务端 Secret 引用管理。</p></header><Card><CardHeader><CardTitle>已配置 Provider</CardTitle></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>Provider</TableHead><TableHead>模型</TableHead><TableHead>状态</TableHead><TableHead>Secret 引用</TableHead></TableRow></TableHeader><TableBody>{providers.map(provider=><TableRow key={provider.id}><TableCell>{provider.provider_name}</TableCell><TableCell>{provider.model??"—"}</TableCell><TableCell><Badge variant={provider.enabled?"secondary":"outline"}>{provider.enabled?"Enabled":"Disabled"}</Badge></TableCell><TableCell>{provider.secret_ref??"未配置"}</TableCell></TableRow>)}</TableBody></Table>{!providers.length?<p className="py-6 text-sm text-muted-foreground">{message||"暂无 Provider 配置。"}</p>:null}</CardContent></Card></main>}

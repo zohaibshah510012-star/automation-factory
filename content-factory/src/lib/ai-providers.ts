@@ -2,6 +2,8 @@
 export {
   getActiveProviderName,
   getAiProviders,
+  getImageProvider,
+  getImageProviderName,
   type ProviderName,
 } from "@/lib/providers/registry";
 export {

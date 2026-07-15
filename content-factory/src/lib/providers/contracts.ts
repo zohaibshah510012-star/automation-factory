@@ -7,6 +7,7 @@ export interface TextProvider {
 }
 
 export interface ImageProvider {
+  generateImage(input: { taskId: string; prompt: string; model?: string; size?: string; filename?: string }): Promise<{ url: string; provider: string; model: string; metadata?: Record<string, unknown> }>;
   generateStoryboardImages(input: { taskId: string; topic: string; scenes: string[] }): Promise<ContentAsset[]>;
 }
 

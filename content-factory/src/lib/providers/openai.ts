@@ -78,23 +78,29 @@ export function createOpenAIProviders(): AiProviders {
       },
     },
     image: {
+      async generateImage({ taskId, prompt, model, size, filename }) {
+        const selectedModel = model || process.env.OPENAI_IMAGE_MODEL || "gpt-image-1.5";
+        const selectedSize = size || "1024x1024";
+        const result = await client().images.generate({
+          model: selectedModel,
+          prompt,
+          size: selectedSize as "1024x1024" | "1024x1536" | "1536x1024",
+          quality: (process.env.OPENAI_IMAGE_QUALITY as "low" | "medium" | "high" | "auto" | undefined) ?? "low",
+          output_format: "png",
+        });
+        const base64 = result.data?.[0]?.b64_json;
+        if (!base64) throw new Error("OpenAI image response was empty.");
+        return { url: await saveGeneratedFile(taskId, filename ?? "image.png", Buffer.from(base64, "base64")), provider: "openai", model: selectedModel, metadata: { size: selectedSize } };
+      },
       async generateStoryboardImages({ taskId, topic, scenes }) {
         return Promise.all(scenes.map(async (scene, index) => {
-          const result = await client().images.generate({
-            model: process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-1.5",
-            prompt: "Vertical short-video scene. Topic: " + topic + ". Scene: " + scene + ". 9:16, no text, no watermark.",
-            size: "1024x1536",
-            quality: (process.env.OPENAI_IMAGE_QUALITY as "low" | "medium" | "high" | "auto" | undefined) ?? "low",
-            output_format: "png",
-          });
-          const base64 = result.data?.[0]?.b64_json;
-          if (!base64) throw new Error("OpenAI image response was empty.");
+          const image = await this.generateImage({ taskId, prompt: "Vertical short-video scene. Topic: " + topic + ". Scene: " + scene + ". 9:16, no text, no watermark.", size: "1024x1536", filename: `scene-${index + 1}.png` });
           return {
             id: "image_" + (index + 1),
             type: "image" as const,
             name: "OpenAI scene " + (index + 1),
-            url: await saveGeneratedFile(taskId, "scene-" + (index + 1) + ".png", Buffer.from(base64, "base64")),
-            provider: "openai/" + (process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-1.5"),
+            url: image.url,
+            provider: image.provider + "/" + image.model,
           };
         }));
       },

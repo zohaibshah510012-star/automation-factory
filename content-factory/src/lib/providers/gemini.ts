@@ -36,22 +36,22 @@ export function createGeminiProviders(): AiProviders {
       },
     },
     image: {
+      async generateImage({ taskId, prompt, model, size, filename }) {
+        const selectedModel = model || process.env.GEMINI_IMAGE_MODEL;
+        if (!selectedModel) throw new ProviderConfigurationError("GEMINI_IMAGE_MODEL is not configured.");
+        const response = await client().models.generateContent({ model: selectedModel, contents: prompt, config: { responseModalities: ["IMAGE"] } });
+        if (!response.data) throw new Error("Gemini image response was empty.");
+        return { url: await saveGeneratedFile(taskId, filename ?? "image.png", Buffer.from(response.data, "base64")), provider: "gemini", model: selectedModel, metadata: { size: size ?? null } };
+      },
       async generateStoryboardImages({ taskId, topic, scenes }) {
-        const model = process.env.GEMINI_IMAGE_MODEL;
-        if (!model) throw new ProviderConfigurationError("GEMINI_IMAGE_MODEL is not configured.");
         return Promise.all(scenes.map(async (scene, index) => {
-          const response = await client().models.generateContent({
-            model,
-            contents: "Vertical short-video scene. Topic: " + topic + ". Scene: " + scene + ". 9:16, no text.",
-            config: { responseModalities: ["IMAGE"] },
-          });
-          if (!response.data) throw new Error("Gemini image response was empty.");
+          const image = await this.generateImage({ taskId, prompt: "Vertical short-video scene. Topic: " + topic + ". Scene: " + scene + ". 9:16, no text.", filename: `scene-${index + 1}.png` });
           return {
             id: "image_" + (index + 1),
             type: "image" as const,
             name: "Gemini scene " + (index + 1),
-            url: await saveGeneratedFile(taskId, "scene-" + (index + 1) + ".png", Buffer.from(response.data, "base64")),
-            provider: "gemini/" + model,
+            url: image.url,
+            provider: image.provider + "/" + image.model,
           };
         }));
       },

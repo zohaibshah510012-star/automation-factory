@@ -10,7 +10,7 @@ const unavailable = (capability: string) => {
 export function createAlternativeProviders(): AiProviders {
   return {
     text: { async generateContentPack() { return unavailable("AlternativeTextProvider"); } },
-    image: { async generateStoryboardImages() { return unavailable("AlternativeImageProvider"); } },
+    image: { async generateImage() { return unavailable("AlternativeImageProvider"); }, async generateStoryboardImages() { return unavailable("AlternativeImageProvider"); } },
     voice: { async synthesize() { return unavailable("AlternativeVoiceProvider"); } },
     video: { async render() { return unavailable("AlternativeVideoProvider"); } },
   };

@@ -32,6 +32,9 @@ export function createDeepSeekProviders(): AiProviders {
       },
     },
     image: {
+      async generateImage() {
+        throw new ProviderConfigurationError("DeepSeek image provider is not configured. Set AI_IMAGE_PROVIDER to openai, gemini, or another image-capable provider.");
+      },
       async generateStoryboardImages() {
         throw new ProviderConfigurationError("DeepSeek image provider is not configured in this text MVP.");
       },

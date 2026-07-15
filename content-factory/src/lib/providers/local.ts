@@ -13,6 +13,9 @@ export function createLocalProviders(): AiProviders {
   return {
     text: { async generateContentPack({ topic, brief }) { return localContent(topic, brief); } },
     image: {
+      async generateImage({ taskId, prompt, model, size }) {
+        return { url: "mock://images/" + encodeURIComponent(prompt) + "/" + taskId, provider: "local", model: model ?? "local-image", metadata: { size: size ?? "1024x1024" } };
+      },
       async generateStoryboardImages({ topic, scenes }) {
         return scenes.map((_, index) => ({
           id: "image_" + (index + 1),

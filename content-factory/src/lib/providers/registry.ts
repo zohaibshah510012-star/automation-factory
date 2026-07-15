@@ -17,6 +17,10 @@ export function getActiveProviderName(): ProviderName {
 }
 
 export function getAiProviders(): AiProviders {
+  return getProvidersFor(getActiveProviderName());
+}
+
+export function getProvidersFor(provider: ProviderName): AiProviders {
   const factory: Record<ProviderName, () => AiProviders> = {
     openai: createOpenAIProviders,
     gemini: createGeminiProviders,
@@ -24,5 +28,15 @@ export function getAiProviders(): AiProviders {
     alternative: createAlternativeProviders,
     local: createLocalProviders,
   };
-  return factory[getActiveProviderName()]();
+  return factory[provider]();
+}
+
+export function getImageProviderName(): ProviderName {
+  const provider = process.env.AI_IMAGE_PROVIDER ?? process.env.AI_PROVIDER ?? "openai";
+  if (provider === "openai" || provider === "gemini" || provider === "deepseek" || provider === "alternative" || provider === "local") return provider;
+  throw new ProviderConfigurationError("Unsupported AI_IMAGE_PROVIDER: " + provider);
+}
+
+export function getImageProvider() {
+  return getProvidersFor(getImageProviderName()).image;
 }

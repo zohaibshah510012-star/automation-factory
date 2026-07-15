@@ -1,7 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { ContentPack, ContentTask } from "@/lib/types";
+import type { ContentAsset, ContentPack, ContentTask } from "@/lib/types";
 
-type WorkflowStepType = "prompt" | "ai_generate" | "save_result";
+type WorkflowStepType = "prompt" | "ai_generate" | "image_generate" | "save_result";
 
 type Workflow = {
   id: string;
@@ -23,12 +23,13 @@ type ResolvedPrompt = {
   userPrompt: string;
 };
 
-type GeneratedContent = Required<Omit<ContentPack, "assets">>;
+type GeneratedContent = Required<Omit<ContentPack, "assets">> & { assets?: ContentAsset[] };
 
 type WorkflowExecutionInput = {
   task: ContentTask;
   prompt: ResolvedPrompt;
   generateContent: () => Promise<GeneratedContent>;
+  generateImage?: () => Promise<{ url: string; provider: string; model: string; metadata?: Record<string, unknown> }>;
 };
 
 type WorkflowExecutionResult = {
@@ -45,7 +46,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function getStepType(step: WorkflowStep, isLastStep: boolean): WorkflowStepType {
   const configuredType = asRecord(step.config).type;
-  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "save_result") {
+  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "image_generate" || configuredType === "save_result") {
     return configuredType;
   }
 
@@ -117,6 +118,7 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
   }
 
   let generatedContent: GeneratedContent | undefined;
+  const generatedAssets: ContentAsset[] = [];
 
   try {
     for (const [index, step] of steps.entries()) {
@@ -125,6 +127,8 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
         ? { prompt: input.prompt.name, version: input.prompt.version }
         : stepType === "ai_generate"
           ? { topic: input.task.topic, prompt: input.prompt.name }
+          : stepType === "image_generate"
+            ? { topic: input.task.topic, prompt: input.prompt.name }
           : { taskId: input.task.id, hasGeneratedContent: Boolean(generatedContent) };
       const stepStartedAt = new Date().toISOString();
       const { data: stepRun, error: stepRunError } = await supabase
@@ -150,7 +154,15 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
           output = { systemPrompt: input.prompt.systemPrompt, userPrompt: input.prompt.userPrompt };
         } else if (stepType === "ai_generate") {
           generatedContent = await input.generateContent();
+          generatedContent.assets = generatedAssets;
           output = { title: generatedContent.title, script: generatedContent.script, storyboard: generatedContent.storyboard };
+        } else if (stepType === "image_generate") {
+          if (!input.generateImage) throw new Error("Workflow image_generate step requires an image provider.");
+          const image = await input.generateImage();
+          const asset = { id: `workflow-image-${step.position}`, type: "image" as const, name: `Workflow image ${step.position}`, url: image.url, provider: `${image.provider}/${image.model}` };
+          generatedAssets.push(asset);
+          if (generatedContent) generatedContent.assets = generatedAssets;
+          output = { image: asset, metadata: image.metadata ?? {} };
         } else {
           if (!generatedContent) throw new Error("Workflow save_result step requires generated content.");
           output = { saved: true, title: generatedContent.title };
