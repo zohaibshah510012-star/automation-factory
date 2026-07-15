@@ -12,6 +12,6 @@ export function createAlternativeProviders(): AiProviders {
     text: { async generateContentPack() { return unavailable("AlternativeTextProvider"); } },
     image: { async generateImage() { return unavailable("AlternativeImageProvider"); }, async generateStoryboardImages() { return unavailable("AlternativeImageProvider"); } },
     voice: { async synthesize() { return unavailable("AlternativeVoiceProvider"); } },
-    video: { async render() { return unavailable("AlternativeVideoProvider"); } },
+    video: { async generateVideo() { return unavailable("AlternativeVideoProvider"); }, async getStatus() { return unavailable("AlternativeVideoProvider"); }, async render() { return unavailable("AlternativeVideoProvider"); } },
   };
 }

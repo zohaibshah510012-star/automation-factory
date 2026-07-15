@@ -123,6 +123,8 @@ export function createOpenAIProviders(): AiProviders {
       },
     },
     video: {
+      async generateVideo() { throw new ProviderConfigurationError("OpenAI video provider is not configured in this MVP. Set AI_VIDEO_PROVIDER to a configured video provider."); },
+      async getStatus() { throw new ProviderConfigurationError("OpenAI video provider is not configured in this MVP."); },
       async render() {
         throw new ProviderConfigurationError("OpenAI video provider is not configured in this MVP.");
       },

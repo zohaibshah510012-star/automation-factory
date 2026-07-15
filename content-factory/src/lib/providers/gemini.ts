@@ -62,6 +62,8 @@ export function createGeminiProviders(): AiProviders {
       },
     },
     video: {
+      async generateVideo() { throw new ProviderConfigurationError("Gemini video provider is not configured in this MVP."); },
+      async getStatus() { throw new ProviderConfigurationError("Gemini video provider is not configured in this MVP."); },
       async render() {
         throw new ProviderConfigurationError("Gemini video provider is not configured in this MVP.");
       },

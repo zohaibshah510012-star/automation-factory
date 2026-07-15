@@ -1,7 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ContentAsset, ContentPack, ContentTask } from "@/lib/types";
 
-type WorkflowStepType = "prompt" | "ai_generate" | "image_generate" | "save_result";
+type WorkflowStepType = "prompt" | "ai_generate" | "image_generate" | "video_generate" | "save_result";
 
 type Workflow = {
   id: string;
@@ -30,6 +30,7 @@ type WorkflowExecutionInput = {
   prompt: ResolvedPrompt;
   generateContent: () => Promise<GeneratedContent>;
   generateImage?: () => Promise<{ url: string; provider: string; model: string; metadata?: Record<string, unknown> }>;
+  generateVideo?: () => Promise<{ status: "processing" | "completed"; provider: string; model: string; videoUrl?: string; thumbnailUrl?: string; metadata?: Record<string, unknown> }>;
 };
 
 type WorkflowExecutionResult = {
@@ -46,7 +47,7 @@ function asRecord(value: unknown): Record<string, unknown> {
 
 function getStepType(step: WorkflowStep, isLastStep: boolean): WorkflowStepType {
   const configuredType = asRecord(step.config).type;
-  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "image_generate" || configuredType === "save_result") {
+  if (configuredType === "prompt" || configuredType === "ai_generate" || configuredType === "image_generate" || configuredType === "video_generate" || configuredType === "save_result") {
     return configuredType;
   }
 
@@ -129,6 +130,8 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
           ? { topic: input.task.topic, prompt: input.prompt.name }
           : stepType === "image_generate"
             ? { topic: input.task.topic, prompt: input.prompt.name }
+            : stepType === "video_generate"
+              ? { topic: input.task.topic, prompt: input.prompt.name }
           : { taskId: input.task.id, hasGeneratedContent: Boolean(generatedContent) };
       const stepStartedAt = new Date().toISOString();
       const { data: stepRun, error: stepRunError } = await supabase
@@ -163,6 +166,14 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
           generatedAssets.push(asset);
           if (generatedContent) generatedContent.assets = generatedAssets;
           output = { image: asset, metadata: image.metadata ?? {} };
+        } else if (stepType === "video_generate") {
+          if (!input.generateVideo) throw new Error("Workflow video_generate step requires a video provider.");
+          const video = await input.generateVideo();
+          if (video.status !== "completed" || !video.videoUrl) throw new Error("Workflow video_generate step requires a completed video result.");
+          const asset = { id: `workflow-video-${step.position}`, type: "video" as const, name: `Workflow video ${step.position}`, url: video.videoUrl, provider: `${video.provider}/${video.model}` };
+          generatedAssets.push(asset);
+          if (generatedContent) generatedContent.assets = generatedAssets;
+          output = { video: asset, thumbnailUrl: video.thumbnailUrl ?? null, metadata: video.metadata ?? {} };
         } else {
           if (!generatedContent) throw new Error("Workflow save_result step requires generated content.");
           output = { saved: true, title: generatedContent.title };

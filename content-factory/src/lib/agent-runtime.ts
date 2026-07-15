@@ -16,6 +16,7 @@ type AgentRuntimeInput = {
   prompt: ResolvedPrompt;
   generateContent: () => Promise<GeneratedContent>;
   generateImage?: () => Promise<{ url: string; provider: string; model: string; metadata?: Record<string, unknown> }>;
+  generateVideo?: () => Promise<{ status: "processing" | "completed"; provider: string; model: string; videoUrl?: string; thumbnailUrl?: string; metadata?: Record<string, unknown> }>;
 };
 
 type ConfiguredAgent = {

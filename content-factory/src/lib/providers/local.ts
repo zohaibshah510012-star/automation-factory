@@ -32,6 +32,8 @@ export function createLocalProviders(): AiProviders {
       },
     },
     video: {
+      async generateVideo({ taskId, prompt, model, durationSeconds }) { return { status: "completed" as const, provider: "local", model: model ?? "local-video", videoUrl: `mock://videos/${encodeURIComponent(prompt)}/${taskId}`, thumbnailUrl: "mock://thumbnails/local", metadata: { durationSeconds: durationSeconds ?? 5 } }; },
+      async getStatus() { return { status: "completed" as const }; },
       async render() {
         throw new ProviderConfigurationError("Local video provider is not configured in this MVP.");
       },

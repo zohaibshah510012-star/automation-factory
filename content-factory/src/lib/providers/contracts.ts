@@ -16,6 +16,8 @@ export interface VoiceProvider {
 }
 
 export interface VideoProvider {
+  generateVideo(input: { taskId: string; prompt: string; model?: string; durationSeconds?: number }): Promise<{ status: "processing" | "completed"; provider: string; model: string; videoUrl?: string; thumbnailUrl?: string; metadata?: Record<string, unknown> }>;
+  getStatus(input: { taskId: string; providerJobId?: string }): Promise<{ status: "processing" | "completed" | "failed"; videoUrl?: string; thumbnailUrl?: string; metadata?: Record<string, unknown>; error?: string }>;
   render(input: { taskId: string; script: string; assets: ContentAsset[] }): Promise<ContentAsset>;
 }
 

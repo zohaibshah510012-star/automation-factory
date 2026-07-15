@@ -45,6 +45,8 @@ export function createDeepSeekProviders(): AiProviders {
       },
     },
     video: {
+      async generateVideo() { throw new ProviderConfigurationError("DeepSeek video provider is not configured. Set AI_VIDEO_PROVIDER to a video-capable provider."); },
+      async getStatus() { throw new ProviderConfigurationError("DeepSeek video provider is not configured."); },
       async render() {
         throw new ProviderConfigurationError("DeepSeek video provider is not configured in this text MVP.");
       },

@@ -40,3 +40,13 @@ export function getImageProviderName(): ProviderName {
 export function getImageProvider() {
   return getProvidersFor(getImageProviderName()).image;
 }
+
+export function getVideoProviderName(): ProviderName {
+  const provider = process.env.AI_VIDEO_PROVIDER ?? process.env.AI_PROVIDER ?? "openai";
+  if (provider === "openai" || provider === "gemini" || provider === "deepseek" || provider === "alternative" || provider === "local") return provider;
+  throw new ProviderConfigurationError("Unsupported AI_VIDEO_PROVIDER: " + provider);
+}
+
+export function getVideoProvider() {
+  return getProvidersFor(getVideoProviderName()).video;
+}
