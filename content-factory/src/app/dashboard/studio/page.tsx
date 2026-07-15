@@ -7,7 +7,6 @@ import {
   CheckCircle2Icon,
   ClapperboardIcon,
   FileTextIcon,
-  FilmIcon,
   ImageIcon,
   Loader2Icon,
   SparklesIcon,
@@ -35,28 +34,31 @@ type Drama = {
   progress: { total: number; completed: number; failed: number };
 };
 
-type ProductTemplate = {
-  id: "drama" | "content" | "image" | "video";
+type OnboardingTemplate = {
+  id: "drama" | "content" | "image";
   title: string;
   description: string;
+  recommendation: string;
   icon: typeof ClapperboardIcon;
   href: string;
   taskType?: "drama" | "short_video_script";
 };
 
-const productTemplates: ProductTemplate[] = [
+const onboardingTemplates: OnboardingTemplate[] = [
   {
     id: "drama",
-    title: "AI 短剧生成",
-    description: "生成剧情、角色、分镜，并自动衔接图片与视频任务。",
+    title: "短剧创作",
+    description: "适合想快速验证短剧账号、IP栏目或品牌故事的用户。",
+    recommendation: "推荐：先生成 90 秒竖屏短剧，查看剧情、角色、分镜和媒体任务。",
     icon: ClapperboardIcon,
     href: "/dashboard/studio",
     taskType: "drama",
   },
   {
     id: "content",
-    title: "内容生成",
-    description: "生成口播、营销、社媒和电商内容草稿。",
+    title: "内容营销",
+    description: "适合营销团队把卖点变成口播、社媒和电商内容。",
+    recommendation: "推荐：先生成一条短视频脚本，再沉淀到内容资产中心。",
     icon: FileTextIcon,
     href: "/dashboard/content",
     taskType: "short_video_script",
@@ -64,16 +66,10 @@ const productTemplates: ProductTemplate[] = [
   {
     id: "image",
     title: "图片生成",
-    description: "把创意描述转换成海报、分镜图或产品视觉。",
+    description: "适合先做封面、分镜图、海报和产品视觉素材。",
+    recommendation: "推荐：先把主题改写成一张竖屏短视频封面图。",
     icon: ImageIcon,
     href: "/dashboard/images",
-  },
-  {
-    id: "video",
-    title: "视频生成",
-    description: "把提示词推进到视频生成任务，用于短视频片段。",
-    icon: FilmIcon,
-    href: "/dashboard/videos",
   },
 ];
 
@@ -113,17 +109,18 @@ function progressText(progress: Drama["progress"]) {
 
 export default function StudioPage() {
   const [dramas, setDramas] = useState<Drama[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<ProductTemplate["id"]>("drama");
+  const [selectedTemplate, setSelectedTemplate] = useState<OnboardingTemplate["id"]>("drama");
   const [topic, setTopic] = useState("7天起号：AI 如何帮助内容团队稳定产出短剧");
   const [genre, setGenre] = useState("都市创业");
   const [style, setStyle] = useState("快节奏、强冲突、适合竖屏短视频");
   const [duration, setDuration] = useState("90 秒");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [needsUpgrade, setNeedsUpgrade] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const currentTemplate = useMemo(
-    () => productTemplates.find((item) => item.id === selectedTemplate) ?? productTemplates[0],
+    () => onboardingTemplates.find((item) => item.id === selectedTemplate) ?? onboardingTemplates[0],
     [selectedTemplate],
   );
 
@@ -141,6 +138,11 @@ export default function StudioPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const template = params.get("template");
+    if (template === "content" || template === "image" || template === "drama") {
+      setSelectedTemplate(template);
+    }
     void loadDramas();
   }, []);
 
@@ -148,6 +150,7 @@ export default function StudioPage() {
     event.preventDefault();
     setMessage("");
     setError("");
+    setNeedsUpgrade(false);
 
     setLoading(true);
     const brief = `类型：${genre}\n风格：${style}\n目标时长：${duration}\n请按可生产的短视频资产结构输出。`;
@@ -159,26 +162,22 @@ export default function StudioPage() {
         headers,
         body: JSON.stringify({ prompt }),
       })
-      : currentTemplate.id === "video"
-        ? await fetch("/api/videos", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({ prompt, durationSeconds: 5 }),
-        })
-        : await fetch("/api/tasks", {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            topic,
-            brief,
-            taskType: currentTemplate.taskType,
-          }),
-        });
+      : await fetch("/api/tasks", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          topic,
+          brief,
+          taskType: currentTemplate.taskType,
+        }),
+      });
     setLoading(false);
 
     if (!response.ok) {
       const payload = (await response.json().catch(() => ({}))) as { error?: string };
-      setError(payload.error === "INSUFFICIENT_CREDITS" ? "Credits 不足，请先升级套餐或联系管理员。" : payload.error ?? "创建作品失败，请稍后重试。");
+      const insufficientCredits = payload.error === "INSUFFICIENT_CREDITS" || response.status === 402;
+      setNeedsUpgrade(insufficientCredits);
+      setError(insufficientCredits ? "体验 Credits 不足。升级套餐后即可继续生成更多内容资产。" : payload.error ?? "创建作品失败，请稍后重试。");
       return;
     }
 
@@ -193,28 +192,33 @@ export default function StudioPage() {
       <header className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-sm text-muted-foreground">Short Drama Studio</p>
-            <h1 className="text-3xl font-semibold tracking-tight">短剧工作室</h1>
+            <p className="text-sm text-muted-foreground">Growth Onboarding</p>
+            <h1 className="text-3xl font-semibold tracking-tight">选择一个目标，生成你的第一个作品</h1>
           </div>
-          <Button render={<Link href="/dashboard/templates" />} variant="outline">
-            查看全部模板
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button render={<Link href="/showcase" />} variant="outline">
+              查看 Demo
+            </Button>
+            <Button render={<Link href="/dashboard/templates" />} variant="outline">
+              全部模板
+            </Button>
+          </div>
         </div>
         <p className="max-w-3xl text-sm leading-6 text-muted-foreground">
-          首次使用只需要三步：选择模板，输入主题，生成第一个作品。下方 Demo 会先展示完整成品结构，新用户无需等待真实任务完成也能理解产品价值。
+          新用户默认获得体验 Credits。第一次登录后建议先选择一个模板，输入主题，生成第一份可展示的内容资产。
         </p>
       </header>
 
       <section className="grid gap-5 lg:grid-cols-[.9fr_1.1fr]">
         <Card>
           <CardHeader>
-            <CardTitle>首次生成引导</CardTitle>
-            <CardDescription>选择一个可购买的 AI 内容模板，系统会调用现有任务流程。</CardDescription>
+            <CardTitle>首次登录引导</CardTitle>
+            <CardDescription>系统会根据你的目标自动推荐模板和生成说明。</CardDescription>
           </CardHeader>
           <CardContent>
             <form className="flex flex-col gap-5" onSubmit={createFirstWork}>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {productTemplates.map((template) => (
+              <div className="grid gap-3 md:grid-cols-3">
+                {onboardingTemplates.map((template) => (
                   <button
                     className={`rounded-xl border bg-background p-4 text-left transition hover:bg-muted ${selectedTemplate === template.id ? "ring-2 ring-primary" : ""}`}
                     key={template.id}
@@ -226,6 +230,10 @@ export default function StudioPage() {
                     <p className="mt-1 text-sm leading-6 text-muted-foreground">{template.description}</p>
                   </button>
                 ))}
+              </div>
+
+              <div className="rounded-xl bg-muted p-4 text-sm leading-6 text-muted-foreground">
+                {currentTemplate.recommendation}
               </div>
 
               <div className="grid gap-3">
@@ -254,18 +262,30 @@ export default function StudioPage() {
                   value={style}
                 />
               </div>
-              <Button disabled={loading || !topic.trim()} type="submit">
-                {loading ? <Loader2Icon className="animate-spin" data-icon="inline-start" /> : <SparklesIcon data-icon="inline-start" />}
-                生成第一个作品
-              </Button>
-              {currentTemplate.id !== "drama" ? (
-                <Button render={<Link href={currentTemplate.href} />} type="button" variant="outline">
-                  查看对应工作台
-                  <ArrowRightIcon data-icon="inline-end" />
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button disabled={loading || !topic.trim()} type="submit">
+                  {loading ? <Loader2Icon className="animate-spin" data-icon="inline-start" /> : <SparklesIcon data-icon="inline-start" />}
+                  免费生成第一个作品
                 </Button>
-              ) : null}
+                {currentTemplate.id !== "drama" ? (
+                  <Button render={<Link href={currentTemplate.href} />} type="button" variant="outline">
+                    查看对应工作台
+                    <ArrowRightIcon data-icon="inline-end" />
+                  </Button>
+                ) : null}
+              </div>
               {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-              {error ? <p className="text-sm text-destructive">{error}</p> : null}
+              {error ? (
+                <div className="flex flex-col gap-3 rounded-xl border p-4">
+                  <p className="text-sm text-destructive">{error}</p>
+                  {needsUpgrade ? (
+                    <Button render={<Link href="/dashboard/billing" />} variant="outline">
+                      升级套餐继续生成
+                      <ArrowRightIcon data-icon="inline-end" />
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
             </form>
           </CardContent>
         </Card>
@@ -299,6 +319,10 @@ export default function StudioPage() {
                 </div>
               ))}
             </div>
+            <Button render={<Link href="/showcase" />} variant="outline">
+              查看完整 Showcase
+              <ArrowRightIcon data-icon="inline-end" />
+            </Button>
           </CardContent>
         </Card>
       </section>
@@ -340,7 +364,7 @@ export default function StudioPage() {
         {!dramas.length && !error ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
-              还没有真实短剧资产。你可以先查看上方 Demo，或立即生成第一个作品。
+              还没有真实短剧资产。你可以先查看 Demo，或立即生成第一个作品。
             </CardContent>
           </Card>
         ) : null}

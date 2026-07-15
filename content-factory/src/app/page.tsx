@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ArrowRightIcon,
+  CheckCircle2Icon,
   ClapperboardIcon,
   FilmIcon,
   ImageIcon,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -22,7 +24,7 @@ import {
 const audiences = [
   {
     title: "短视频创作者",
-    description: "从一个选题生成短剧脚本、角色、分镜和视频任务，减少从灵感到发布的断层。",
+    description: "从一个选题生成短剧脚本、角色、分镜和视频任务，快速验证账号方向。",
   },
   {
     title: "内容团队",
@@ -30,7 +32,7 @@ const audiences = [
   },
   {
     title: "营销团队",
-    description: "快速把产品卖点改写成剧情冲突、口播脚本、视觉素材和投放内容。",
+    description: "把产品卖点改写成剧情冲突、口播脚本、视觉素材和投放内容。",
   },
 ];
 
@@ -52,7 +54,7 @@ const templates = [
   },
   {
     icon: Layers3Icon,
-    name: "内容生成",
+    name: "内容营销",
     description: "面向营销、社媒、电商和口播的结构化文案生产。",
   },
   {
@@ -73,6 +75,25 @@ const demoScenes = [
   "Scene 03：分镜自动进入图片与视频任务，素材开始沉淀。",
 ];
 
+const faqs = [
+  {
+    question: "新用户可以免费试用吗？",
+    answer: "可以。新账号初始化后会获得体验 Credits，可以直接生成第一个短剧或内容作品。",
+  },
+  {
+    question: "我需要懂 Agent 或 Workflow 吗？",
+    answer: "不需要。用户只需要选择模板并输入主题，底层 Agent、Workflow、Provider 会在后台完成生产链路。",
+  },
+  {
+    question: "适合什么团队购买？",
+    answer: "适合短视频创作者、内容团队、营销团队，以及需要批量生产脚本、图片、视频素材的业务团队。",
+  },
+  {
+    question: "Credits 用完后怎么办？",
+    answer: "工作台会引导进入 Billing 页面升级套餐，后续生产继续通过 Credits 计费和追踪。",
+  },
+];
+
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -86,15 +107,14 @@ export default function LandingPage() {
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
             <a href="#workflow">短剧流程</a>
-            <a href="#templates">模板能力</a>
-            <a href="#demo">Demo</a>
+            <a href="#product">产品截图</a>
+            <Link href="/showcase">Demo 案例</Link>
+            <a href="#faq">FAQ</a>
           </nav>
-          <Link
-            className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/80"
-            href="/dashboard/studio"
-          >
-            开始创作
-          </Link>
+          <Button render={<Link href="/dashboard/studio" />}>
+            免费生成
+            <ArrowRightIcon data-icon="inline-end" />
+          </Button>
         </div>
       </header>
 
@@ -105,38 +125,41 @@ export default function LandingPage() {
           </Badge>
           <div className="flex flex-col gap-5">
             <h1 className="max-w-4xl text-4xl font-semibold tracking-tight md:text-6xl">
-              把一个主题，变成可发布的短剧内容资产
+              用 AI 把一个主题生成可发布的短剧内容资产
             </h1>
             <p className="max-w-2xl text-lg leading-8 text-muted-foreground">
-              Automation Factory 面向短视频创作者、内容团队和营销团队，把剧情、角色、分镜、图片、视频和分发任务串成一条可购买、可复用、可规模化的 AI 内容生产线。
+              面向短视频创作者、内容团队和营销团队，Automation Factory 把剧情、角色、分镜、图片、视频和分发任务串成一条可试用、可购买、可复用的内容生产线。
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Link
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground transition hover:bg-primary/80"
-              href="/dashboard/studio"
-            >
-              生成第一部短剧
-              <ArrowRightIcon />
-            </Link>
-            <Link
-              className="inline-flex h-10 items-center justify-center rounded-lg border bg-background px-5 text-sm font-medium transition hover:bg-muted"
-              href="/dashboard/templates"
-            >
-              查看模板库
-            </Link>
+            <Button render={<Link href="/dashboard/studio" />} size="lg">
+              免费生成第一部短剧
+              <ArrowRightIcon data-icon="inline-end" />
+            </Button>
+            <Button render={<Link href="/showcase" />} size="lg" variant="outline">
+              先看 Demo 案例
+            </Button>
           </div>
           <div className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-3">
-            <span>剧情结构化</span>
-            <span>图片/视频任务自动衔接</span>
-            <span>Credits 商业化计费</span>
+            <span className="flex items-center gap-2">
+              <CheckCircle2Icon />
+              新用户体验 Credits
+            </span>
+            <span className="flex items-center gap-2">
+              <CheckCircle2Icon />
+              图片/视频任务自动衔接
+            </span>
+            <span className="flex items-center gap-2">
+              <CheckCircle2Icon />
+              套餐升级路径清晰
+            </span>
           </div>
         </div>
 
         <Card className="border-foreground/10 shadow-sm">
           <CardHeader>
             <CardTitle>短剧生产 Demo</CardTitle>
-            <CardDescription>新用户无需等待，也能先理解最终结果长什么样。</CardDescription>
+            <CardDescription>无需登录也能先理解最终结果长什么样。</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-5">
             <div className="rounded-xl bg-muted p-4">
@@ -165,6 +188,10 @@ export default function LandingPage() {
                 视频片段入口
               </div>
             </div>
+            <Button render={<Link href="/showcase" />} variant="outline">
+              查看完整 Demo Showcase
+              <ArrowRightIcon data-icon="inline-end" />
+            </Button>
           </CardContent>
         </Card>
       </section>
@@ -172,9 +199,9 @@ export default function LandingPage() {
       <section className="border-y bg-muted/30" id="workflow">
         <div className="mx-auto max-w-7xl px-6 py-14">
           <div className="flex flex-col gap-3">
-            <h2 className="text-3xl font-semibold tracking-tight">从主题到成片资产的生产链路</h2>
+            <h2 className="text-3xl font-semibold tracking-tight">从访问到首次价值，只保留 3 个动作</h2>
             <p className="max-w-2xl text-muted-foreground">
-              用户不用理解 Agent、Workflow、Provider 的底层概念，只需要选择模板、输入主题，然后查看生成结果。
+              用户不用理解 Agent、Workflow、Provider，只需要选择模板、输入主题、查看生成结果。
             </p>
           </div>
           <div className="mt-8 grid gap-3 md:grid-cols-7">
@@ -184,6 +211,47 @@ export default function LandingPage() {
                 <p className="mt-2 font-medium">{item}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto grid max-w-7xl gap-8 px-6 py-16 lg:grid-cols-[.95fr_1.05fr]" id="product">
+        <div className="flex flex-col gap-4">
+          <Badge className="w-fit" variant="outline">Product Screenshot</Badge>
+          <h2 className="text-3xl font-semibold tracking-tight">一个工作台完成首次生成、查看资产和升级套餐</h2>
+          <p className="leading-7 text-muted-foreground">
+            首页承诺和登录后的首个价值体验保持一致：用户点击免费生成后，会进入模板选择、主题输入和任务创建流程；Credits 不足时直接进入 Billing 升级。
+          </p>
+          <div className="grid gap-3 text-sm">
+            {["模板推荐", "体验 Credits 提醒", "Demo 成品预览", "Upgrade CTA"].map((item) => (
+              <div className="flex items-center gap-2" key={item}>
+                <CheckCircle2Icon />
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border bg-card p-4 shadow-sm">
+          <div className="rounded-xl bg-muted/60 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm text-muted-foreground">Short Drama Studio</p>
+                <p className="text-xl font-semibold">首次生成引导</p>
+              </div>
+              <Badge variant="secondary">1000 trial credits</Badge>
+            </div>
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              {["短剧创作", "内容营销", "图片生成"].map((item) => (
+                <div className="rounded-xl border bg-background p-4" key={item}>
+                  <p className="font-medium">{item}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">推荐模板</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 rounded-xl border bg-background p-4">
+              <p className="text-sm text-muted-foreground">主题</p>
+              <p className="mt-1 font-medium">7天起号：AI 如何帮助内容团队稳定产出短剧</p>
+            </div>
           </div>
         </div>
       </section>
@@ -217,13 +285,13 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="bg-primary text-primary-foreground" id="demo">
+      <section className="bg-primary text-primary-foreground">
         <div className="mx-auto grid max-w-7xl gap-8 px-6 py-16 md:grid-cols-[.8fr_1.2fr] md:items-center">
           <div className="flex flex-col gap-4">
             <UsersIcon />
             <h2 className="text-3xl font-semibold tracking-tight">适合从个人创作者扩展到团队生产</h2>
             <p className="leading-7 text-primary-foreground/75">
-              Demo、模板、首次引导和资产展示共同降低用户第一次使用门槛，让产品从“技术系统”变成“能买、能试、能复购”的 SaaS。
+              Demo、模板、首次引导和升级路径共同降低第一次使用门槛，让产品从“技术系统”变成“能试、能买、能复购”的 SaaS。
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -234,6 +302,25 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-4xl px-6 py-16" id="faq">
+        <div className="text-center">
+          <h2 className="text-3xl font-semibold tracking-tight">FAQ</h2>
+          <p className="mt-2 text-muted-foreground">消除用户注册和首次生成前的关键疑虑。</p>
+        </div>
+        <div className="mt-8 grid gap-3">
+          {faqs.map((faq) => (
+            <Card key={faq.question}>
+              <CardHeader>
+                <CardTitle>{faq.question}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm leading-6 text-muted-foreground">{faq.answer}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </section>
     </main>

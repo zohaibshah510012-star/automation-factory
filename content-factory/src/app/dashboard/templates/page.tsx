@@ -25,7 +25,7 @@ const templates = [
     audience: "短视频创作者 / MCN / 品牌内容团队",
     description: "围绕一个主题生成剧情、角色、分镜，并推进图片与视频任务。",
     output: ["剧情简介", "角色设定", "结构化分镜", "图片/视频任务"],
-    href: "/dashboard/studio",
+    href: "/dashboard/studio?template=drama",
   },
   {
     icon: FileTextIcon,
@@ -33,7 +33,7 @@ const templates = [
     audience: "营销团队 / 社媒运营 / 电商团队",
     description: "生成口播脚本、社媒文案、营销卖点和内容资产。",
     output: ["标题", "脚本", "分镜建议", "可复用内容资产"],
-    href: "/dashboard/content",
+    href: "/dashboard/studio?template=content",
   },
   {
     icon: ImageIcon,
@@ -41,7 +41,7 @@ const templates = [
     audience: "设计协作 / 内容包装 / 广告素材",
     description: "把场景描述、产品卖点或分镜转换成图片生成任务。",
     output: ["图片 Prompt", "生成状态", "结果预览", "重新生成入口"],
-    href: "/dashboard/images",
+    href: "/dashboard/studio?template=image",
   },
   {
     icon: FilmIcon,
@@ -81,7 +81,7 @@ export default function TemplateGalleryPage() {
             这里把已经上线的 AI 能力包装成用户能理解、能选择、能购买的产品入口。新用户可以先看 Demo，再进入对应工作台生成第一个作品。
           </p>
         </div>
-        <Button render={<Link href="/dashboard/studio" />}>
+        <Button render={<Link href="/dashboard/studio?template=drama" />}>
           从短剧模板开始
           <SparklesIcon data-icon="inline-end" />
         </Button>
@@ -138,7 +138,7 @@ export default function TemplateGalleryPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-3 md:grid-cols-3">
-              {["选择模板", "输入主题", "生成第一个作品"].map((step, index) => (
+              {["选择模板", "输入主题", "免费生成第一个作品"].map((step, index) => (
                 <div className="rounded-xl bg-muted p-4" key={step}>
                   <p className="text-xs text-muted-foreground">Step {index + 1}</p>
                   <p className="mt-2 font-medium">{step}</p>
