@@ -4,7 +4,7 @@ Last updated: 2026-07-16
 
 ## Current phase
 
-Beta User Path E2E Verification.
+Image Provider Beta E2E Verification.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
@@ -60,12 +60,17 @@ This fixed missing `feedback_submitted` product analytics events. Before `0027` 
 
 Text generation is usable with the current `AI_PROVIDER=deepseek` configuration.
 
-Image and video generation are intentionally blocked until dedicated providers are configured:
+Image generation is now usable in the local Beta environment with `AI_IMAGE_PROVIDER=local`.
 
-- `/api/images` returns `Image provider not configured`
+The local provider now writes a real generated SVG file, persists the image task, mirrors it into `content_tasks`, stores an image asset, and commits Credits. This is a Beta-safe fallback for first-user image workflow validation when external provider networking is unavailable.
+
+OpenAI and Gemini image provider adapters remain available, but local smoke tests against both external services failed from this machine with provider/network timeouts. Production can switch to `AI_IMAGE_PROVIDER=openai`, `gemini`, or `flux` after the target server network and provider account are confirmed.
+
+Video generation remains intentionally blocked until a dedicated video provider is configured:
+
 - `/api/videos` returns `Video provider not configured`
 
-This is the correct safe behavior for Beta because image/video tasks do not silently fall back to the text provider.
+This is the correct safe behavior for Beta because video tasks do not silently fall back to the text provider.
 
 ## Credits status
 
@@ -77,6 +82,14 @@ Credits behavior passed the E2E check:
 - `usage_history` recorded the charge.
 
 No changes were made to Billing Core or Credits core functions.
+
+Image Credits behavior also passed:
+
+- Image workflow test user started with `1000` Credits.
+- Image task charged `40` Credits.
+- Final balance was `960`.
+- `credit_transactions` showed reserve committed.
+- `usage_history` recorded provider/model `local / local-svg-image`.
 
 ## Admin operations status
 
@@ -103,11 +116,22 @@ Only `docs/PROJECT_STATUS.md` is being created in this change because it was exp
 
 ## Current Beta readiness
 
-Beta user path is ready for invited text-generation users.
+Beta user path is ready for invited text-generation users and local image workflow users.
+
+Latest Image E2E result:
+
+- `/api/images`: created task successfully.
+- `image_tasks.status`: `completed`.
+- `content_tasks.status`: `completed`.
+- Generated image URL: `/generated/[taskId]/image.svg`.
+- Generated image route: `200`.
+- Image asset row: created.
+- Credits: committed and deducted.
+- Admin task visibility: verified.
 
 Remaining risks:
 
-1. Image/video providers are not configured, so multimodal Beta should be positioned as text/workflow-first until `AI_IMAGE_PROVIDER` and `AI_VIDEO_PROVIDER` are configured.
+1. External OpenAI/Gemini image calls timed out from this local machine; production server networking/provider access still needs verification before promising external AI image generation.
 2. Local standalone preview must receive `.env.local` values through process environment; `.next/standalone` does not automatically include `.env.local`.
 3. E2E test data remains in Supabase for auditability and was not deleted.
-
+4. Video provider remains unconfigured.
