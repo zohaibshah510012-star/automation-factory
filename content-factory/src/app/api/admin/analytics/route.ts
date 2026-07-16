@@ -8,6 +8,7 @@ type PaymentRow = { amount: number; status: string };
 type TaskRow = { status: string };
 type ProductEventRow = { event_name: string; surface: string; path: string | null; created_at: string };
 type FeedbackRow = { satisfaction: number; status: string; category: string };
+type InviteRow = { status: string };
 
 function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0);
@@ -36,7 +37,7 @@ export async function GET(request: Request) {
     await requireAdmin(request);
     const supabase = getSupabaseServerClient()!;
 
-    const [users, tasks, usage, prompts, payments, subscriptions, productEvents, feedback] = await Promise.all([
+    const [users, tasks, usage, prompts, payments, subscriptions, productEvents, feedback, invites] = await Promise.all([
       supabase.from("profiles").select("id", { count: "exact", head: true }),
       supabase.from("content_tasks").select("status"),
       supabase.from("usage_history").select("provider,model,capability,credits_charged"),
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
       supabase.from("subscriptions").select("status"),
       supabase.from("product_events").select("event_name,surface,path,created_at").order("created_at", { ascending: false }).limit(200),
       supabase.from("user_feedback").select("satisfaction,status,category").limit(200),
+      supabase.from("beta_invites").select("status"),
     ]);
 
     const taskRows = (tasks.data ?? []) as TaskRow[];
@@ -60,10 +62,15 @@ export async function GET(request: Request) {
     const userCount = users.count ?? 0;
     const productEventRows = (productEvents.data ?? []) as ProductEventRow[];
     const feedbackRows = (feedback.data ?? []) as FeedbackRow[];
+    const inviteRows = (invites.data ?? []) as InviteRow[];
     const eventCounts = productEventRows.reduce<Record<string, number>>((counts, event) => {
       counts[event.event_name] = (counts[event.event_name] ?? 0) + 1;
       return counts;
     }, {});
+    const signupUsers = eventCounts.signup_completed || eventCounts.signup_complete || userCount;
+    const firstGenerationCompleted = eventCounts.first_generation_completed ?? 0;
+    const totalGenerations = eventCounts.task_create ?? taskRows.length;
+    const failedTasks = taskRows.filter((task) => task.status === "failed").length;
     const averageSatisfaction = feedbackRows.length
       ? Number((feedbackRows.reduce((total, row) => total + Number(row.satisfaction ?? 0), 0) / feedbackRows.length).toFixed(1))
       : 0;
@@ -94,17 +101,35 @@ export async function GET(request: Request) {
           funnel: {
             pageView: eventCounts.page_view ?? 0,
             ctaClick: eventCounts.cta_click ?? 0,
-            signupComplete: eventCounts.signup_complete ?? 0,
+            signupComplete: eventCounts.signup_completed ?? eventCounts.signup_complete ?? 0,
+            firstWorkspaceCreated: eventCounts.first_workspace_created ?? 0,
             templateSelect: eventCounts.template_select ?? 0,
             taskCreate: eventCounts.task_create ?? 0,
+            firstGenerationStarted: eventCounts.first_generation_started ?? 0,
             taskComplete: eventCounts.task_complete ?? 0,
+            firstGenerationCompleted,
+            firstAssetCreated: eventCounts.first_asset_created ?? 0,
+            creditsConsumed: eventCounts.credits_consumed ?? 0,
             upgradeClick: eventCounts.upgrade_click ?? 0,
           },
+        },
+        betaMetrics: {
+          invites: {
+            total: inviteRows.length,
+            pending: inviteRows.filter((invite) => invite.status === "pending").length,
+            used: inviteRows.filter((invite) => invite.status === "used").length,
+          },
+          registeredUsers: userCount,
+          activatedUsers: firstGenerationCompleted,
+          firstGenerationCompletionRate: signupUsers ? Number(((firstGenerationCompleted / signupUsers) * 100).toFixed(1)) : 0,
+          averageGenerationsPerUser: userCount ? Number((totalGenerations / userCount).toFixed(2)) : 0,
+          creditsConsumed,
+          failureRate: taskRows.length ? Number(((failedTasks / taskRows.length) * 100).toFixed(1)) : 0,
         },
         feedback: {
           total: feedbackRows.length,
           averageSatisfaction,
-          newCount: feedbackRows.filter((row) => row.status === "new").length,
+          newCount: feedbackRows.filter((row) => row.status === "open").length,
         },
       },
       { headers: { "Cache-Control": "no-store" } },

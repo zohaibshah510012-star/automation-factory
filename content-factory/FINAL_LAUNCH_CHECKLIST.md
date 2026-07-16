@@ -1,12 +1,12 @@
 # Final Launch Checklist
 
-Baseline: `0001` through `0024`.
+Baseline: `0001` through `0026`.
 
 ## 1. Supabase migration verification
 
-- [ ] `supabase/migrations` contains exactly `0001` through `0024`
+- [ ] `supabase/migrations` contains exactly `0001` through `0026`
 - [ ] No duplicate migration prefixes
-- [ ] Production Supabase has applied through `0024_beta_operations.sql`
+- [ ] Production Supabase has applied through `0026_beta_launch_preparation.sql`
 - [ ] Required billing/payment/distribution/analytics/workspace tables exist
 - [ ] `grant_subscription_credits` and `admin_adjust_user_credits` RPCs exist
 
@@ -91,7 +91,22 @@ docker compose logs -f web
 - [ ] Confirm another normal user cannot verify the payment
 - [ ] Confirm admin can inspect payments
 
-## 11. Rollback
+## 11. Beta readiness
+
+- [ ] Admin creates invite at `/admin/beta`
+- [ ] Invite URL opens `/beta`
+- [ ] Invite email and code validate before magic-link login
+- [ ] First dashboard entry calls `/api/auth/bootstrap`
+- [ ] `signup_completed` event is recorded
+- [ ] `first_workspace_created` event is recorded after workspace creation
+- [ ] `first_generation_started` and `first_generation_completed` events are recorded
+- [ ] `first_asset_created` event is recorded when the first asset is saved
+- [ ] `credits_consumed` event is recorded after credits settlement
+- [ ] User submits feedback with satisfaction, notes, and optional task ID
+- [ ] Admin feedback queue supports `open`, `reviewing`, and `resolved`
+- [ ] `/admin/analytics` shows Beta Metrics
+
+## 12. Rollback
 
 - [ ] Previous commit ID recorded
 - [ ] Database backup completed

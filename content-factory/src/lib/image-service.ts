@@ -1,7 +1,7 @@
 import { getImageProvider, getImageProviderName } from "@/lib/ai-providers";
 import { recordAiProviderCost } from "@/lib/ai-cost-service";
 import { commitCredits, refundCredits, reserveCredits } from "@/lib/credits-service";
-import { trackProductEvent } from "@/lib/product-analytics";
+import { trackProductEvent, trackProductEventOnce } from "@/lib/product-analytics";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ContentTask } from "@/lib/types";
 
@@ -99,6 +99,8 @@ export async function runImageTask(taskId: string) {
     await recordAiProviderCost({ userId: task.userId, contentTaskId: task.id, usageHistoryId: settlement.usageHistoryId, provider: image.provider, model: image.model, taskType: "image", creditsUsed: pricing.amount, status: "completed" });
     await supabase.from("system_logs").insert({ level: "info", event: "image_task_completed", user_id: task.userId, metadata: { imageTaskId: task.id, provider: image.provider, model: image.model } });
     await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "image", path: "image-service", properties: { taskId: task.id, taskType: "image", provider: image.provider, model: image.model } });
+    await trackProductEventOnce({ eventName: "first_generation_completed", userId: task.userId, surface: "image", path: "image-service", properties: { taskId: task.id, taskType: "image" } });
+    await trackProductEventOnce({ eventName: "first_asset_created", userId: task.userId, surface: "content", path: "image-service", properties: { taskId: task.id, assetType: "image" } });
     return mapTask(completed as ImageTaskRow);
   } catch (exception) {
     const message = exception instanceof Error ? exception.message : "Image generation failed.";

@@ -4,10 +4,16 @@ export type ProductEventName =
   | "page_view"
   | "cta_click"
   | "signup_complete"
+  | "signup_completed"
+  | "first_workspace_created"
   | "template_view"
   | "template_select"
   | "task_create"
+  | "first_generation_started"
   | "task_complete"
+  | "first_generation_completed"
+  | "first_asset_created"
+  | "credits_consumed"
   | "billing_view"
   | "upgrade_click";
 
@@ -38,6 +44,20 @@ export async function trackProductEvent(input: ProductEventInput) {
   });
 }
 
+export async function trackProductEventOnce(input: ProductEventInput & { userId: string }) {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return;
+
+  const { data } = await supabase
+    .from("product_events")
+    .select("id")
+    .eq("user_id", input.userId)
+    .eq("event_name", input.eventName)
+    .maybeSingle();
+  if (data) return;
+  await trackProductEvent(input);
+}
+
 export type FeedbackInput = {
   userId: string;
   satisfaction: number;
@@ -45,6 +65,7 @@ export type FeedbackInput = {
   contentFeedback?: string;
   suggestion?: string;
   source?: string;
+  contentTaskId?: string | null;
 };
 
 export async function createUserFeedback(input: FeedbackInput) {
@@ -60,6 +81,7 @@ export async function createUserFeedback(input: FeedbackInput) {
       content_feedback: input.contentFeedback ?? null,
       suggestion: input.suggestion ?? null,
       source: input.source ?? "dashboard",
+      content_task_id: input.contentTaskId ?? null,
     })
     .select()
     .single();
@@ -74,7 +96,7 @@ export async function listAdminFeedback() {
 
   const { data, error } = await supabase
     .from("user_feedback")
-    .select("*,profiles(email,display_name)")
+    .select("*,profiles(email,display_name),content_tasks(topic,title,task_type,status)")
     .order("created_at", { ascending: false })
     .limit(100);
 

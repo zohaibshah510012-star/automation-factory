@@ -35,6 +35,18 @@ async function authorizationHeader() {
   return { Authorization: `Bearer ${session?.data.session?.access_token ?? ""}` };
 }
 
+async function bootstrapAccount() {
+  const headers = await authorizationHeader();
+  const params = new URLSearchParams(window.location.search);
+  const inviteCode = params.get("invite_code") ?? window.localStorage.getItem("automation_factory_beta_invite_code") ?? undefined;
+  const response = await fetch("/api/auth/bootstrap", {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify({ inviteCode }),
+  });
+  if (response.ok && inviteCode) window.localStorage.removeItem("automation_factory_beta_invite_code");
+}
+
 const quickActions = [
   {
     title: "Create content",
@@ -72,6 +84,7 @@ export default function DashboardHomePage() {
 
     async function loadBilling() {
       try {
+        await bootstrapAccount();
         const response = await fetch("/api/billing", {
           headers: await authorizationHeader(),
           cache: "no-store",

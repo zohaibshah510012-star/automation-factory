@@ -14,7 +14,7 @@ import { runAgent } from "@/lib/agent-runtime";
 import { commitCredits, refundCredits, reserveCredits } from "@/lib/credits-service";
 import { createDramaSceneImages } from "@/lib/drama-images";
 import { recordAiProviderCost } from "@/lib/ai-cost-service";
-import { trackProductEvent } from "@/lib/product-analytics";
+import { trackProductEvent, trackProductEventOnce } from "@/lib/product-analytics";
 
 const taskStore = new Map<string, ContentTask>();
 
@@ -266,6 +266,10 @@ export async function runTask(taskId: string) {
       status: "completed",
     });
     await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, provider: getActiveProviderName() } });
+    if (task.userId) {
+      await trackProductEventOnce({ eventName: "first_generation_completed", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType } });
+      if (task.assets.length) await trackProductEventOnce({ eventName: "first_asset_created", userId: task.userId, surface: "content", path: "task-store", properties: { taskId: task.id, assetCount: task.assets.length } });
+    }
     await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_completed", task_id: task.id, metadata: { provider: getActiveProviderName() } });
     console.info("[automation-factory] workflow_completed", { taskId: task.id });
   } catch (error) {

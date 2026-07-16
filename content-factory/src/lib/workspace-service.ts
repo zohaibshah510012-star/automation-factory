@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { trackProductEventOnce } from "@/lib/product-analytics";
 
 export type WorkspaceRole = "owner" | "admin" | "member" | "viewer";
 
@@ -56,6 +57,11 @@ export async function listUserWorkspaces(userId: string) {
 
 export async function createWorkspace(input: { userId: string; name: string; slug?: string }) {
   const supabase = store();
+  const { count } = await supabase
+    .from("workspace_members")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", input.userId)
+    .eq("status", "active");
   const slug = input.slug?.trim() || slugify(input.name);
   const { data: workspace, error } = await supabase
     .from("workspaces")
@@ -72,6 +78,16 @@ export async function createWorkspace(input: { userId: string; name: string; slu
     status: "active",
   });
   if (memberError) throw memberError;
+
+  if ((count ?? 0) === 0) {
+    await trackProductEventOnce({
+      eventName: "first_workspace_created",
+      userId: input.userId,
+      surface: "workspace",
+      path: "/api/workspaces",
+      properties: { workspaceId: workspace.id },
+    });
+  }
 
   return workspace;
 }

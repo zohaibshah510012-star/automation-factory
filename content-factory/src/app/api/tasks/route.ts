@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createTask, listTasks, runTask } from "@/lib/task-store";
 import { assertDailyGenerationLimit } from "@/lib/ai-cost-service";
-import { trackProductEvent } from "@/lib/product-analytics";
+import { trackProductEvent, trackProductEventOnce } from "@/lib/product-analytics";
 import { requireUser } from "@/lib/request-auth";
 import type { TaskType } from "@/lib/prompt-engine";
 
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
     await assertDailyGenerationLimit(user.id);
     const task = await createTask({ topic, brief: body.brief?.trim(), userId: user.id, taskType: body.taskType ?? "short_video_script", promptId: body.promptId, agentId: body.agentId });
     await trackProductEvent({ eventName: "task_create", userId: user.id, surface: "product", path: "/api/tasks", properties: { taskId: task.id, taskType: task.taskType, topic: task.topic } });
+    await trackProductEventOnce({ eventName: "first_generation_started", userId: user.id, surface: "product", path: "/api/tasks", properties: { taskId: task.id, taskType: task.taskType } });
     void runTask(task.id);
     return NextResponse.json({ task }, { status: 201 });
   } catch (error) {

@@ -26,11 +26,25 @@ type AnalyticsData = {
       pageView: number;
       ctaClick: number;
       signupComplete: number;
+      firstWorkspaceCreated: number;
       templateSelect: number;
       taskCreate: number;
+      firstGenerationStarted: number;
       taskComplete: number;
+      firstGenerationCompleted: number;
+      firstAssetCreated: number;
+      creditsConsumed: number;
       upgradeClick: number;
     };
+  };
+  betaMetrics: {
+    invites: { total: number; pending: number; used: number };
+    registeredUsers: number;
+    activatedUsers: number;
+    firstGenerationCompletionRate: number;
+    averageGenerationsPerUser: number;
+    creditsConsumed: number;
+    failureRate: number;
   };
   feedback: { total: number; averageSatisfaction: number; newCount: number };
 };
@@ -70,9 +84,14 @@ export default function Analytics() {
     { label: "Page views", value: data?.productAnalytics.funnel.pageView ?? 0 },
     { label: "CTA clicks", value: data?.productAnalytics.funnel.ctaClick ?? 0 },
     { label: "Signup complete", value: data?.productAnalytics.funnel.signupComplete ?? 0 },
+    { label: "First workspace", value: data?.productAnalytics.funnel.firstWorkspaceCreated ?? 0 },
     { label: "Template select", value: data?.productAnalytics.funnel.templateSelect ?? 0 },
     { label: "Task create", value: data?.productAnalytics.funnel.taskCreate ?? 0 },
+    { label: "First generation started", value: data?.productAnalytics.funnel.firstGenerationStarted ?? 0 },
     { label: "Task complete", value: data?.productAnalytics.funnel.taskComplete ?? 0 },
+    { label: "First generation completed", value: data?.productAnalytics.funnel.firstGenerationCompleted ?? 0 },
+    { label: "First asset created", value: data?.productAnalytics.funnel.firstAssetCreated ?? 0 },
+    { label: "Credits consumed event", value: data?.productAnalytics.funnel.creditsConsumed ?? 0 },
     { label: "Upgrade click", value: data?.productAnalytics.funnel.upgradeClick ?? 0 },
   ];
 
@@ -101,6 +120,27 @@ export default function Analytics() {
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-semibold">{metric.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3 lg:grid-cols-6">
+        {[
+          { label: "Beta invites", value: data?.betaMetrics.invites.total ?? 0, helper: `${data?.betaMetrics.invites.pending ?? 0} pending` },
+          { label: "Registered users", value: data?.betaMetrics.registeredUsers ?? 0, helper: "profiles" },
+          { label: "Activated users", value: data?.betaMetrics.activatedUsers ?? 0, helper: "first generation complete" },
+          { label: "First-gen rate", value: `${data?.betaMetrics.firstGenerationCompletionRate ?? 0}%`, helper: "completion / signup" },
+          { label: "Avg generations", value: data?.betaMetrics.averageGenerationsPerUser ?? 0, helper: "per user" },
+          { label: "Failure rate", value: `${data?.betaMetrics.failureRate ?? 0}%`, helper: `${data?.betaMetrics.creditsConsumed ?? 0} credits` },
+        ].map((metric) => (
+          <Card key={metric.label}>
+            <CardHeader>
+              <CardTitle className="text-sm">{metric.label}</CardTitle>
+              <CardDescription>{metric.helper}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-semibold">{metric.value}</p>
             </CardContent>
           </Card>
         ))}

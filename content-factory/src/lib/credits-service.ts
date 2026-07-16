@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ContentTask } from "@/lib/types";
+import { trackProductEvent } from "@/lib/product-analytics";
 
 type CreditAgent = {
   credit_cost: number;
@@ -70,6 +71,13 @@ export async function commitCredits(task: ContentTask, pricing?: { provider: str
     console.error("[automation-factory] usage_history_write_failed", { taskId: task.id, message: usageError.message });
     return {};
   }
+  await trackProductEvent({
+    eventName: "credits_consumed",
+    userId: task.userId,
+    surface: "billing",
+    path: "credits-service",
+    properties: { taskId: task.id, taskType: task.taskType, credits: task.creditsCharged ?? 0 },
+  });
   return { usageHistoryId: usage?.id as string | undefined };
 }
 

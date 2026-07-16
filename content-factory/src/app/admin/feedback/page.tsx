@@ -19,6 +19,7 @@ type FeedbackRow = {
   status: string;
   created_at: string;
   profiles?: { email?: string | null; display_name?: string | null } | null;
+  content_tasks?: { topic?: string | null; title?: string | null; task_type?: string | null; status?: string | null } | null;
 };
 
 async function authHeaders() {
@@ -79,6 +80,7 @@ export default function AdminFeedbackPage() {
                 <TableHead>User</TableHead>
                 <TableHead>Score</TableHead>
                 <TableHead>Category</TableHead>
+                <TableHead>Task</TableHead>
                 <TableHead>Feedback</TableHead>
                 <TableHead>Suggestion</TableHead>
                 <TableHead>Status</TableHead>
@@ -91,12 +93,13 @@ export default function AdminFeedbackPage() {
                   <TableCell>{item.profiles?.email ?? item.profiles?.display_name ?? "-"}</TableCell>
                   <TableCell>{item.satisfaction}/5</TableCell>
                   <TableCell>{item.category}</TableCell>
+                  <TableCell className="max-w-48 truncate">{item.content_tasks?.title ?? item.content_tasks?.topic ?? "-"}</TableCell>
                   <TableCell className="max-w-64 whitespace-pre-wrap">{item.content_feedback ?? "-"}</TableCell>
                   <TableCell className="max-w-64 whitespace-pre-wrap">{item.suggestion ?? "-"}</TableCell>
-                  <TableCell><Badge variant={item.status === "new" ? "secondary" : "outline"}>{item.status}</Badge></TableCell>
+                  <TableCell><Badge variant={item.status === "open" ? "secondary" : "outline"}>{item.status}</Badge></TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
-                      {["reviewed", "resolved", "archived"].map((status) => (
+                      {["open", "reviewing", "resolved"].map((status) => (
                         <Button key={status} onClick={() => void updateStatus(item.id, status)} size="sm" variant="outline">
                           {status}
                         </Button>
@@ -107,7 +110,7 @@ export default function AdminFeedbackPage() {
               ))}
               {!feedback.length ? (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={7}>No feedback yet.</TableCell>
+                  <TableCell className="text-muted-foreground" colSpan={8}>No feedback yet.</TableCell>
                 </TableRow>
               ) : null}
             </TableBody>

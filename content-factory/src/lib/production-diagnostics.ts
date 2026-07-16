@@ -112,6 +112,8 @@ async function checkMigrations(): Promise<DiagnosticItem> {
     "distribution_jobs",
     "payment_providers",
     "product_events",
+    "beta_invites",
+    "ai_provider_costs",
   ];
   const missing: string[] = [];
   for (const table of requiredTables) {
@@ -119,8 +121,8 @@ async function checkMigrations(): Promise<DiagnosticItem> {
     if (error) missing.push(table);
   }
   return missing.length
-    ? item("Database migration", "ERROR", `Required tables are missing or inaccessible: ${missing.join(", ")}`, { expectedLatest: "0024_beta_operations.sql", missing })
-    : item("Database migration", "READY", "Required tables through migration 0024 are reachable.", { expectedLatest: "0024_beta_operations.sql" });
+    ? item("Database migration", "ERROR", `Required tables are missing or inaccessible: ${missing.join(", ")}`, { expectedLatest: "0026_beta_launch_preparation.sql", missing })
+    : item("Database migration", "READY", "Required tables through migration 0026 are reachable.", { expectedLatest: "0026_beta_launch_preparation.sql" });
 }
 
 function checkEmail() {

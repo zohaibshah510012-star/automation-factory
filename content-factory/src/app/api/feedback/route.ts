@@ -14,6 +14,7 @@ export async function POST(request: Request) {
       content_feedback?: string;
       suggestion?: string;
       source?: string;
+      content_task_id?: string | null;
     };
 
     const satisfaction = Number(body.satisfaction ?? 0);
@@ -28,6 +29,7 @@ export async function POST(request: Request) {
       contentFeedback: body.content_feedback,
       suggestion: body.suggestion,
       source: body.source,
+      contentTaskId: body.content_task_id,
     });
 
     return NextResponse.json({ feedback }, { status: 201 });

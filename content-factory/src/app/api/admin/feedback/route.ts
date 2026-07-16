@@ -19,6 +19,7 @@ export async function PATCH(request: Request) {
     await requireAdmin(request);
     const body = await request.json() as { id?: string; status?: string };
     if (!body.id || !body.status) throw new Error("INVALID_PAYLOAD");
+    if (!["open", "reviewing", "resolved"].includes(body.status)) throw new Error("INVALID_STATUS");
     return NextResponse.json({ feedback: await updateFeedbackStatus(body.id, body.status) });
   } catch {
     return NextResponse.json({ error: "Unable to update feedback" }, { status: 400 });
