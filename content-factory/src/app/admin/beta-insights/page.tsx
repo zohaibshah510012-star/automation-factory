@@ -1,0 +1,241 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { ActivityIcon, BarChart3Icon, CoinsIcon, RefreshCwIcon, TrendingUpIcon, UsersIcon } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+
+type BetaInsights = {
+  users: Array<{
+    id: string;
+    email: string | null;
+    registeredAt: string;
+    inviteSource: string;
+    latestActivity: string | null;
+    currentPlan: string;
+    subscriptionStatus: string;
+    generationCount: number;
+    creditsConsumed: number;
+    upgradeIntent: number;
+  }>;
+  activation: {
+    registeredUsers: number;
+    firstGenerationCompletedUsers: number;
+    firstGenerationCompletionRate: number;
+    averageFirstGenerationTimeMinutes: number;
+  };
+  usage: {
+    totalGenerations: number;
+    byType: { text: number; image: number; video: number };
+    creditsConsumed: number;
+  };
+  retention: {
+    returnedWithinSevenDays: number;
+    activeUsers: number;
+  };
+  revenueReadiness: {
+    plans: Array<{ plan: string; count: number }>;
+    upgradeIntentRecords: number;
+    upgradeClicks: number;
+    billingFeedback: number;
+  };
+  generatedAt: string;
+};
+
+async function authHeaders() {
+  const session = await getSupabaseBrowserClient()?.auth.getSession();
+  return { Authorization: `Bearer ${session?.data.session?.access_token ?? ""}` };
+}
+
+function formatDate(value: string | null) {
+  return value ? new Date(value).toLocaleString() : "-";
+}
+
+export default function BetaInsightsPage() {
+  const [data, setData] = useState<BetaInsights | null>(null);
+  const [message, setMessage] = useState("");
+
+  async function load() {
+    const response = await fetch("/api/admin/beta-insights", { headers: await authHeaders(), cache: "no-store" });
+    if (!response.ok) {
+      setMessage("Unable to load Beta insights.");
+      if (response.status === 403) location.assign("/");
+      return;
+    }
+    setData(await response.json());
+    setMessage("");
+  }
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const metrics = [
+    {
+      label: "Registered",
+      value: data?.activation.registeredUsers ?? "-",
+      helper: "Beta users",
+      icon: UsersIcon,
+    },
+    {
+      label: "Activated",
+      value: data?.activation.firstGenerationCompletedUsers ?? "-",
+      helper: `${data?.activation.firstGenerationCompletionRate ?? 0}% first-gen rate`,
+      icon: TrendingUpIcon,
+    },
+    {
+      label: "Avg first-gen time",
+      value: `${data?.activation.averageFirstGenerationTimeMinutes ?? 0}m`,
+      helper: "signup to completion",
+      icon: ActivityIcon,
+    },
+    {
+      label: "Generations",
+      value: data?.usage.totalGenerations ?? "-",
+      helper: `${data?.usage.byType.text ?? 0} text / ${data?.usage.byType.image ?? 0} image / ${data?.usage.byType.video ?? 0} video`,
+      icon: BarChart3Icon,
+    },
+    {
+      label: "Credits",
+      value: data?.usage.creditsConsumed ?? "-",
+      helper: "consumed by Beta users",
+      icon: CoinsIcon,
+    },
+    {
+      label: "Revenue signals",
+      value: data?.revenueReadiness.upgradeIntentRecords ?? "-",
+      helper: `${data?.revenueReadiness.upgradeClicks ?? 0} clicks / ${data?.revenueReadiness.billingFeedback ?? 0} feedback`,
+      icon: TrendingUpIcon,
+    },
+  ];
+
+  return (
+    <main className="mx-auto flex max-w-7xl flex-col gap-6 p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">Beta Operations</p>
+          <h1 className="text-3xl font-semibold">Beta Insights</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Activation, usage, retention, and revenue-readiness metrics for the first Beta cohort.
+          </p>
+        </div>
+        <Button onClick={() => void load()} variant="outline">
+          <RefreshCwIcon data-icon="inline-start" />
+          Refresh
+        </Button>
+      </div>
+
+      {message ? <p className="rounded-lg border bg-muted px-3 py-2 text-sm">{message}</p> : null}
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        {metrics.map((metric) => (
+          <Card key={metric.label}>
+            <CardHeader>
+              <CardTitle className="text-sm">{metric.label}</CardTitle>
+              <CardDescription>{metric.helper}</CardDescription>
+              <CardAction>
+                <metric.icon />
+              </CardAction>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold">{metric.value}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1fr_24rem]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Beta users</CardTitle>
+            <CardDescription>Email, invite source, recent activity, plan, and usage signals.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Registered</TableHead>
+                  <TableHead>Invite source</TableHead>
+                  <TableHead>Recent activity</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Generations</TableHead>
+                  <TableHead>Credits</TableHead>
+                  <TableHead>Upgrade intent</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {data?.users.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell className="max-w-56 truncate">{user.email ?? "-"}</TableCell>
+                    <TableCell>{formatDate(user.registeredAt)}</TableCell>
+                    <TableCell className="max-w-48 truncate">{user.inviteSource}</TableCell>
+                    <TableCell>{formatDate(user.latestActivity)}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col gap-1">
+                        <span>{user.currentPlan}</span>
+                        <Badge className="w-fit" variant={user.subscriptionStatus === "active" ? "secondary" : "outline"}>
+                          {user.subscriptionStatus}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>{user.generationCount}</TableCell>
+                    <TableCell>{user.creditsConsumed}</TableCell>
+                    <TableCell>{user.upgradeIntent}</TableCell>
+                  </TableRow>
+                ))}
+                {!data?.users.length ? (
+                  <TableRow>
+                    <TableCell className="text-muted-foreground" colSpan={8}>No Beta users yet.</TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Retention</CardTitle>
+              <CardDescription>Signals that Beta users came back after the first moment.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">7-day returned users</span>
+                <span className="text-lg font-semibold">{data?.retention.returnedWithinSevenDays ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground">Active users</span>
+                <span className="text-lg font-semibold">{data?.retention.activeUsers ?? 0}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Revenue readiness</CardTitle>
+              <CardDescription>Plans and upgrade-intent signals from clicks and feedback.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {data?.revenueReadiness.plans.map((plan) => (
+                <div className="flex items-center justify-between gap-3" key={plan.plan}>
+                  <span className="text-sm text-muted-foreground">{plan.plan}</span>
+                  <span className="text-sm font-medium">{plan.count}</span>
+                </div>
+              ))}
+              {!data?.revenueReadiness.plans.length ? <p className="text-sm text-muted-foreground">No plan data yet.</p> : null}
+              <div className="mt-3 rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                Upgrade intent = upgrade clicks + billing/plan/credits feedback mentions.
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+    </main>
+  );
+}
