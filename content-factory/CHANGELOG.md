@@ -16,6 +16,17 @@
 - `pnpm lint`: passed
 - `pnpm exec tsc --noEmit`: passed
 - `pnpm build`: passed
+
+### SaaS Operating Layer
+
+- Enhanced `/api/admin/overview` with provider readiness, Beta activation rate, feedback queue health, task counts, Credits usage, and provider summaries.
+- Confirmed the existing Admin operating layer covers users, tasks, analytics, beta insights, feedback, health, monitor, and provider readiness.
+
+### Validation
+
+- `pnpm lint`: passed
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm build`: passed
 - Short Drama E2E: passed with local text/image/video providers.
 - Verified drama task completion, 4 completed scenes, 4 image assets, 5 video assets, generated asset routes, Credits deduction, `/dashboard/studio/[taskId]`, `/tasks/[taskId]`, `/assets`, and Admin dramas/tasks visibility.
 

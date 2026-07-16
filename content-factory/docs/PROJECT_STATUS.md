@@ -4,7 +4,7 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Beta Product Completion Sprint - Phase 3 Beta Experience Polish.
+Beta Product Completion Sprint - Phase 4 SaaS Operating Layer.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
@@ -147,6 +147,12 @@ Beta experience polish status:
 - Create Center now gives clearer user-facing recovery messages for insufficient Credits, provider configuration issues, invite/login issues, and oversized prompts.
 - The primary first-session path remains: Dashboard -> Create -> Template -> Generate -> Result -> Assets -> Feedback.
 - Short Drama creation now opens the dedicated Short Drama Result page.
+
+SaaS operating layer status:
+
+- `/admin/analytics` provides revenue, Credits, provider cost, funnel, Beta, and feedback metrics.
+- `/admin/beta-insights` provides lifecycle status, Beta Health Score, active users, likely-to-pay users, at-risk users, retention, and revenue-readiness signals.
+- `/api/admin/overview` now includes provider readiness, Beta activation rate, feedback queue health, task counts, Credits usage, and provider summaries for lightweight operations dashboards.
 
 Latest Image E2E result:
 
