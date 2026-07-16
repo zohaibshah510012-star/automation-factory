@@ -74,7 +74,13 @@ export function createOpenAIProviders(): AiProviders {
             },
           },
         });
-        return JSON.parse(response.output_text) as GeneratedTextContent;
+        return {
+          ...JSON.parse(response.output_text) as GeneratedTextContent,
+          usage: {
+            inputTokens: response.usage?.input_tokens ?? null,
+            outputTokens: response.usage?.output_tokens ?? null,
+          },
+        };
       },
     },
     image: {

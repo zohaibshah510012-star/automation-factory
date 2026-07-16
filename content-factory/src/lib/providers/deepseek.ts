@@ -43,7 +43,13 @@ export function createDeepSeekProviders(): AiProviders {
         });
         const content = response.choices[0]?.message.content;
         if (!content) throw new Error("DeepSeek text response was empty.");
-        return JSON.parse(content) as GeneratedTextContent;
+        return {
+          ...JSON.parse(content) as GeneratedTextContent,
+          usage: {
+            inputTokens: response.usage?.prompt_tokens ?? null,
+            outputTokens: response.usage?.completion_tokens ?? null,
+          },
+        };
       },
     },
     image: {

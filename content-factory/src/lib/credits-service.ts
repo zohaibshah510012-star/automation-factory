@@ -54,19 +54,23 @@ export async function commitCredits(task: ContentTask, pricing?: { provider: str
     .maybeSingle();
   if (existingError) {
     console.error("[automation-factory] usage_history_check_failed", { taskId: task.id, message: existingError.message });
-    return;
+    return {};
   }
-  if (!existing) {
-    const { error: usageError } = await supabase.from("usage_history").insert({
+  if (existing) return { usageHistoryId: existing.id as string };
+
+  const { data: usage, error: usageError } = await supabase.from("usage_history").insert({
       user_id: task.userId,
       content_task_id: task.id,
       capability: task.taskType ?? "short_video_script",
       provider: pricing?.provider ?? null,
       model: pricing?.model ?? null,
       credits_charged: task.creditsCharged ?? 0,
-    });
-    if (usageError) console.error("[automation-factory] usage_history_write_failed", { taskId: task.id, message: usageError.message });
+    }).select("id").single();
+  if (usageError) {
+    console.error("[automation-factory] usage_history_write_failed", { taskId: task.id, message: usageError.message });
+    return {};
   }
+  return { usageHistoryId: usage?.id as string | undefined };
 }
 
 export async function refundCredits(task: ContentTask) {

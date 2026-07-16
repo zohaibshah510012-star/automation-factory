@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { ContentAsset, ContentPack, ContentTask } from "@/lib/types";
+import type { ProviderUsage } from "@/lib/providers/contracts";
 import { writeDramaAsset } from "@/lib/short-drama-asset-service";
 import { createDistributionJob } from "@/lib/distribution-service";
 
@@ -25,7 +26,7 @@ type ResolvedPrompt = {
   userPrompt: string;
 };
 
-type GeneratedContent = Required<Omit<ContentPack, "assets">> & { assets?: ContentAsset[] };
+type GeneratedContent = Required<Omit<ContentPack, "assets">> & { assets?: ContentAsset[]; usage?: ProviderUsage };
 
 type WorkflowExecutionInput = {
   task: ContentTask;

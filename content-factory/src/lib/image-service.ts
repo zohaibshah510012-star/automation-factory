@@ -1,4 +1,5 @@
 import { getImageProvider, getImageProviderName } from "@/lib/ai-providers";
+import { recordAiProviderCost } from "@/lib/ai-cost-service";
 import { commitCredits, refundCredits, reserveCredits } from "@/lib/credits-service";
 import { trackProductEvent } from "@/lib/product-analytics";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -83,17 +84,19 @@ export async function runImageTask(taskId: string) {
   await syncImageContentTask({ ...task, status: "running", provider }, { status: "running", error: null });
   await supabase.from("system_logs").insert({ level: "info", event: "image_task_started", user_id: task.userId, metadata: { imageTaskId: task.id, provider } });
   const creditTask = contentTaskFromImageTask({ ...task, status: "running", provider });
+  let pricing: { amount: number; provider: string | null; model: string | null } | undefined;
   try {
-    const pricing = await reserveCredits(creditTask);
+    pricing = await reserveCredits(creditTask);
     await syncImageContentTask({ ...task, status: "running", provider }, { status: "running", error: null, creditsCharged: pricing.amount });
     const image = await getImageProvider().generateImage({ taskId: task.id, prompt: task.prompt, model: task.model ?? undefined, size: task.size ?? undefined });
     const completedAt = new Date().toISOString();
     const { data: completed, error: completedError } = await supabase.from("image_tasks").update({ status: "completed", provider_name: image.provider, model: image.model, result_url: image.url, result: { url: image.url, provider: image.provider, model: image.model }, metadata: image.metadata ?? {}, updated_at: completedAt }).eq("id", taskId).select().single();
     if (completedError || !completed) throw new Error(`Unable to save image result: ${completedError?.message ?? "unknown error"}`);
     creditTask.creditsCharged = pricing.amount;
-    await commitCredits(creditTask, { provider: image.provider, model: image.model });
+    const settlement = await commitCredits(creditTask, { provider: image.provider, model: image.model });
     await syncImageContentTask(mapTask(completed as ImageTaskRow), { status: "completed", error: null, creditsCharged: pricing.amount });
     await writeImageAsset(mapTask(completed as ImageTaskRow), image);
+    await recordAiProviderCost({ userId: task.userId, contentTaskId: task.id, usageHistoryId: settlement.usageHistoryId, provider: image.provider, model: image.model, taskType: "image", creditsUsed: pricing.amount, status: "completed" });
     await supabase.from("system_logs").insert({ level: "info", event: "image_task_completed", user_id: task.userId, metadata: { imageTaskId: task.id, provider: image.provider, model: image.model } });
     await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "image", path: "image-service", properties: { taskId: task.id, taskType: "image", provider: image.provider, model: image.model } });
     return mapTask(completed as ImageTaskRow);
@@ -104,6 +107,7 @@ export async function runImageTask(taskId: string) {
       console.error("[automation-factory] image_credit_refund_failed", { imageTaskId: task.id, message: refundError instanceof Error ? refundError.message : "unknown" });
     });
     await syncImageContentTask(failed ? mapTask(failed as ImageTaskRow) : task, { status: "failed", error: message, creditsCharged: 0 });
+    await recordAiProviderCost({ userId: task.userId, contentTaskId: task.id, provider, model: task.model, taskType: "image", creditsUsed: 0, status: "failed", error: message, usage: pricing ? { estimatedCost: undefined } : null });
     await supabase.from("system_logs").insert({ level: "error", event: "image_task_failed", user_id: task.userId, metadata: { imageTaskId: task.id, provider, error: message } });
     if (failed) return mapTask(failed as ImageTaskRow);
     throw exception;

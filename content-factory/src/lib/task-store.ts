@@ -13,6 +13,7 @@ import type { ContentTask } from "@/lib/types";
 import { runAgent } from "@/lib/agent-runtime";
 import { commitCredits, refundCredits, reserveCredits } from "@/lib/credits-service";
 import { createDramaSceneImages } from "@/lib/drama-images";
+import { recordAiProviderCost } from "@/lib/ai-cost-service";
 import { trackProductEvent } from "@/lib/product-analytics";
 
 const taskStore = new Map<string, ContentTask>();
@@ -158,6 +159,16 @@ async function syncGenerationStatus(task: ContentTask) {
   }, { onConflict: "content_task_id,stage" });
 }
 
+async function findAiGenerationId(taskId: string) {
+  const { data } = await getSupabaseServerClient()
+    ?.from("ai_generations")
+    .select("id")
+    .eq("content_task_id", taskId)
+    .eq("stage", "text")
+    .maybeSingle() ?? { data: null };
+  return data?.id as string | undefined;
+}
+
 export async function listTasks(userId?: string): Promise<ContentTask[]> {
   const supabase = getSupabaseServerClient();
   if (supabase) {
@@ -239,9 +250,21 @@ export async function runTask(taskId: string) {
 
     task.status = "completed";
     task.updatedAt = timestamp();
-    await commitCredits(task, pricing);
+    const settlement = await commitCredits(task, pricing);
     await syncTask(task);
     await syncContentPack(task);
+    await recordAiProviderCost({
+      userId: task.userId,
+      contentTaskId: task.id,
+      aiGenerationId: await findAiGenerationId(task.id),
+      usageHistoryId: settlement.usageHistoryId,
+      provider: getActiveProviderName(),
+      model: pricing.model,
+      taskType: task.taskType ?? "short_video_script",
+      usage: content.usage,
+      creditsUsed: task.creditsCharged ?? pricing.amount,
+      status: "completed",
+    });
     await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, provider: getActiveProviderName() } });
     await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_completed", task_id: task.id, metadata: { provider: getActiveProviderName() } });
     console.info("[automation-factory] workflow_completed", { taskId: task.id });
@@ -257,6 +280,16 @@ export async function runTask(taskId: string) {
     await refundCredits(task);
     await syncTask(task);
     await syncGenerationStatus(task);
+    await recordAiProviderCost({
+      userId: task.userId,
+      contentTaskId: task.id,
+      aiGenerationId: await findAiGenerationId(task.id),
+      provider: getActiveProviderName(),
+      taskType: task.taskType ?? "short_video_script",
+      creditsUsed: 0,
+      status: "failed",
+      error: task.error,
+    });
     await getSupabaseServerClient()?.from("system_logs").insert({ level: "error", event: "task_failed", task_id: task.id, metadata: { type: getProviderErrorType(error) } });
     console.error("[automation-factory] workflow_failed", { taskId: task.id, type: getProviderErrorType(error) });
   }

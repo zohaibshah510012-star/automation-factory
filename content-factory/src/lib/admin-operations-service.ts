@@ -1,4 +1,5 @@
 import { runTask } from "@/lib/task-store";
+import { getCostOverview } from "@/lib/ai-cost-service";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 type JsonRecord = Record<string, unknown>;
@@ -128,13 +129,14 @@ export async function retryFailedTask(input: { taskId: string; operator: string 
 
 export async function getSystemHealth() {
   const supabase = store();
-  const [tasks, usage, providers, logs, imageTasks, videoTasks] = await Promise.all([
+  const [tasks, usage, providers, logs, imageTasks, videoTasks, costOverview] = await Promise.all([
     supabase.from("content_tasks").select("status,credits_charged,updated_at"),
     supabase.from("usage_history").select("provider,model,credits_charged,created_at"),
     supabase.from("ai_providers").select("provider_name,enabled,model,updated_at").order("provider_name"),
     supabase.from("system_logs").select("level,event,metadata,created_at").order("created_at", { ascending: false }).limit(100),
     supabase.from("image_tasks").select("status"),
     supabase.from("video_tasks").select("status"),
+    getCostOverview(),
   ]);
 
   if (tasks.error) throw tasks.error;
@@ -168,6 +170,7 @@ export async function getSystemHealth() {
       imageFailed: (imageTasks.data ?? []).filter((task) => task.status === "failed").length,
       videoFailed: (videoTasks.data ?? []).filter((task) => task.status === "failed").length,
     },
+    costOverview,
     recentErrors: errorLogs.slice(0, 20),
   };
 }
