@@ -176,7 +176,7 @@ export async function executeWorkflow(input: WorkflowExecutionInput): Promise<Wo
         } else if (stepType === "scene_generate") {
           if (!generatedContent) throw new Error("Workflow scene_generate step requires a story result.");
           output = { scenes: generatedContent.storyboard.map((description, index) => ({ scene_number: index + 1, title: `场景 ${index + 1}`, description, location: "根据剧情设定", characters: ["主角"], dialogue: "根据剧情推进的关键对白", camera: "cinematic medium shot", duration: "8-12s" })), story: generatedContent.script };
-          await writeDramaAsset({taskId:input.task.id,userId:input.task.userId,scenes:output.scenes});
+          await writeDramaAsset({ taskId: input.task.id, userId: input.task.userId, scenes: Array.isArray(output.scenes) ? output.scenes : [] });
         } else if (stepType === "image_generate") {
           if (input.task.taskType === "drama") {
             output = { queuedSceneImages: true, scenes: generatedContent?.storyboard ?? [] };

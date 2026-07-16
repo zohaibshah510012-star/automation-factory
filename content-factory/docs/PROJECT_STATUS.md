@@ -4,7 +4,7 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Video Provider Beta E2E Verification.
+Beta Product Completion Sprint - Phase 1 Short Drama MVP.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
@@ -125,6 +125,15 @@ Only `docs/PROJECT_STATUS.md` is being created in this change because it was exp
 
 Beta user path is ready for invited text-generation users, local image workflow users, and local video workflow users.
 
+Short Drama MVP is now usable as a complete Beta content-production path:
+
+- User enters a story/product/creative idea from Create Center.
+- Short Drama task generates story, characters, scenes, image prompts, and video prompts.
+- Existing local Image Provider creates scene image assets.
+- Existing local Video Provider fallback creates scene video preview assets.
+- Short Drama Result page shows story, characters, scene media, prompts, progress, assets, and feedback/assets next actions.
+- Main drama task, scene tasks, assets, Credits, and Admin visibility were verified.
+
 Latest Image E2E result:
 
 - `/api/images`: created task successfully.
@@ -150,9 +159,24 @@ Latest Video E2E result:
 - Assets page: `200`.
 - Admin task visibility: verified with admin `200`; normal user received `403`.
 
+Latest Short Drama MVP E2E result:
+
+- `/api/tasks` with `taskType=drama`: created task successfully.
+- `content_tasks.status`: `completed`.
+- `short_drama_assets.status`: `completed`.
+- `short_drama_scenes`: 4 scenes completed.
+- Main drama assets: 4 image assets and 5 video assets saved.
+- Generated asset routes: `200`.
+- Credits: `1000 -> 320` in the local Beta smoke test.
+- `/dashboard/studio/[taskId]`: `200`.
+- `/tasks/[taskId]`: `200`.
+- `/assets`: `200`.
+- Admin dramas/tasks APIs: `200`.
+
 Remaining risks:
 
 1. External OpenAI/Gemini image calls timed out from this local machine; production server networking/provider access still needs verification before promising external AI image generation.
 2. Local standalone preview must receive `.env.local` values through process environment; `.next/standalone` does not automatically include `.env.local`.
 3. E2E test data remains in Supabase for auditability and was not deleted.
 4. Local video provider is a Beta preview fallback, not a true rendered MP4/video model. Real video production still requires configured Kling or Runway credentials and provider smoke tests.
+5. Short Drama local fallback creates SVG preview assets for video scenes. This is enough for Beta demo value, but production video quality depends on a real video provider.

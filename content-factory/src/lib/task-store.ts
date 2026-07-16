@@ -235,8 +235,6 @@ export async function runTask(taskId: string) {
     task.script = content.script;
     task.storyboard = content.storyboard;
     task.assets = content.assets ?? [];
-    if (task.taskType === "drama" && task.userId) await createDramaSceneImages({ dramaId: task.id, userId: task.userId, topic: task.topic, scenes: content.storyboard });
-
     // The DeepSeek MVP is intentionally text-only: title, script, and storyboard.
     if (!task.assets.length && getActiveProviderName() !== "deepseek") {
       const images = await providers.image.generateStoryboardImages({
@@ -265,6 +263,7 @@ export async function runTask(taskId: string) {
       creditsUsed: task.creditsCharged ?? pricing.amount,
       status: "completed",
     });
+    if (task.taskType === "drama" && task.userId) await createDramaSceneImages({ dramaId: task.id, userId: task.userId, topic: task.topic, scenes: content.storyboard });
     await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, provider: getActiveProviderName() } });
     if (task.userId) {
       await trackProductEventOnce({ eventName: "first_generation_completed", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType } });

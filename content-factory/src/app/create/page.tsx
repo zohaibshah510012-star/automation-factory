@@ -125,7 +125,7 @@ export default function CreateCenterPage() {
       return;
     }
 
-    window.location.assign(`/tasks/${payload.task.id}`);
+    window.location.assign(selectedTemplate.capability === "drama" ? `/dashboard/studio/${payload.task.id}` : `/tasks/${payload.task.id}`);
   }
 
   return (

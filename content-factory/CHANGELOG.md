@@ -2,6 +2,23 @@
 
 ## 2026-07-17
 
+### Short Drama MVP
+
+- Completed the Short Drama MVP vertical path from Create Center to Short Drama Result page.
+- Linked drama scene image/video generation back into `short_drama_scenes`.
+- Saved generated scene image and video preview assets onto the parent drama task so `/tasks/[id]` and `/assets` show the full content package.
+- Updated the Short Drama Result page to show story, characters, scenes, generated images, generated video previews, prompts, progress, asset navigation, and feedback CTA.
+- Preserved story, characters, and scenes across incremental drama asset writes.
+- Redirected Short Drama creation from `/create` to `/dashboard/studio/[taskId]`.
+
+### Validation
+
+- `pnpm lint`: passed
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm build`: passed
+- Short Drama E2E: passed with local text/image/video providers.
+- Verified drama task completion, 4 completed scenes, 4 image assets, 5 video assets, generated asset routes, Credits deduction, `/dashboard/studio/[taskId]`, `/tasks/[taskId]`, `/assets`, and Admin dramas/tasks visibility.
+
 ### Video Provider Beta E2E
 
 - Enabled the existing local video provider as a Beta-safe workflow fallback with real generated preview files instead of `mock://` URLs.
