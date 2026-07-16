@@ -18,6 +18,11 @@ function apiKey() {
   return process.env.FLUX_API_KEY;
 }
 
+async function providerError(response: Response) {
+  const text = await response.text().catch(() => "");
+  return `Flux image request failed: ${response.status}${text ? ` ${text.slice(0, 240)}` : ""}`;
+}
+
 export function createFluxProviders(): AiProviders {
   const fallback = createLocalProviders();
   return {
@@ -41,7 +46,7 @@ export function createFluxProviders(): AiProviders {
             task_id: taskId,
           }),
         });
-        if (!response.ok) throw new Error(`Flux image request failed: ${response.status}`);
+        if (!response.ok) throw new Error(await providerError(response));
 
         const payload = (await response.json()) as FluxResponse;
         const url = payload.url ?? payload.result_url ?? payload.image_url ?? payload.data?.url ?? payload.data?.image_url;

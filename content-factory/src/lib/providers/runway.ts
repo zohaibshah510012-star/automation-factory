@@ -23,6 +23,11 @@ function runwayHeaders() {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
+async function providerError(response: Response, action: string) {
+  const text = await response.text().catch(() => "");
+  return `Runway ${action} failed: ${response.status}${text ? ` ${text.slice(0, 240)}` : ""}`;
+}
+
 export function createRunwayProviders(): AiProviders {
   const fallback = createLocalProviders();
   return {
@@ -41,7 +46,7 @@ export function createRunwayProviders(): AiProviders {
             task_id: taskId,
           }),
         });
-        if (!response.ok) throw new Error(`Runway video request failed: ${response.status}`);
+        if (!response.ok) throw new Error(await providerError(response, "video request"));
         const payload = (await response.json()) as VideoResponse;
         return {
           status: payload.status === "completed" ? "completed" : "processing",
@@ -55,7 +60,7 @@ export function createRunwayProviders(): AiProviders {
       async getStatus({ providerJobId }) {
         if (!providerJobId) return { status: "processing" };
         const response = await fetch(runwayEndpoint(`/videos/${providerJobId}`), { headers: runwayHeaders() });
-        if (!response.ok) throw new Error(`Runway status request failed: ${response.status}`);
+        if (!response.ok) throw new Error(await providerError(response, "status request"));
         const payload = (await response.json()) as VideoResponse;
         return {
           status: payload.status ?? "processing",

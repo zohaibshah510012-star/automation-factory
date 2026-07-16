@@ -4,7 +4,7 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Beta Product Completion Sprint - Phase 1 Short Drama MVP.
+Beta Product Completion Sprint - Phase 2 Provider Readiness.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
@@ -134,6 +134,14 @@ Short Drama MVP is now usable as a complete Beta content-production path:
 - Short Drama Result page shows story, characters, scene media, prompts, progress, assets, and feedback/assets next actions.
 - Main drama task, scene tasks, assets, Credits, and Admin visibility were verified.
 
+Production Provider upgrade status:
+
+- OpenAI and Flux image provider adapters are available through `AI_IMAGE_PROVIDER`.
+- Kling and Runway video provider adapters are available through `AI_VIDEO_PROVIDER`.
+- Admin Provider readiness API now checks text/image/video configuration without triggering paid generation.
+- Flux/Kling/Runway errors now include HTTP status and response summaries for production debugging.
+- Current local machine readiness: text `deepseek` configured, image `local` Beta fallback ready, video provider not configured unless `AI_VIDEO_PROVIDER` is injected into the runtime environment.
+
 Latest Image E2E result:
 
 - `/api/images`: created task successfully.
@@ -180,3 +188,4 @@ Remaining risks:
 3. E2E test data remains in Supabase for auditability and was not deleted.
 4. Local video provider is a Beta preview fallback, not a true rendered MP4/video model. Real video production still requires configured Kling or Runway credentials and provider smoke tests.
 5. Short Drama local fallback creates SVG preview assets for video scenes. This is enough for Beta demo value, but production video quality depends on a real video provider.
+6. Provider readiness dry-run does not prove external provider account quota or generation quality; each real provider still needs one controlled paid smoke test before public Beta promises.

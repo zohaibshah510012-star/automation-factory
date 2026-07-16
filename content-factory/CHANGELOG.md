@@ -19,6 +19,13 @@
 - Short Drama E2E: passed with local text/image/video providers.
 - Verified drama task completion, 4 completed scenes, 4 image assets, 5 video assets, generated asset routes, Credits deduction, `/dashboard/studio/[taskId]`, `/tasks/[taskId]`, `/assets`, and Admin dramas/tasks visibility.
 
+### Production Provider Readiness
+
+- Added Admin Provider readiness dry-run API for text, image, and video capability configuration.
+- Confirmed existing provider adapters cover OpenAI/Flux for images and Kling/Runway for video routing.
+- Improved Flux, Kling, and Runway error messages to include HTTP status and a short provider response body.
+- Verified `/api/admin/providers/test` returns capability readiness without triggering paid provider generation.
+
 ### Video Provider Beta E2E
 
 - Enabled the existing local video provider as a Beta-safe workflow fallback with real generated preview files instead of `mock://` URLs.
