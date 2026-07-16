@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { createTask, listTasks, runTask } from "@/lib/task-store";
 import { assertDailyGenerationLimit } from "@/lib/ai-cost-service";
-import { trackGenerationStartedMilestone, trackProductEvent } from "@/lib/product-analytics";
+import { trackGenerationStartedMilestone, trackProductEvent, trackProductEventOnce } from "@/lib/product-analytics";
 import { requireUser } from "@/lib/request-auth";
 import type { TaskType } from "@/lib/prompt-engine";
 
@@ -25,6 +25,8 @@ export async function POST(request: Request) {
     const user = await requireUser(request);
     await assertDailyGenerationLimit(user.id);
     const task = await createTask({ topic, brief: body.brief?.trim(), userId: user.id, taskType: body.taskType ?? "short_video_script", promptId: body.promptId, agentId: body.agentId });
+    await trackProductEvent({ eventName: "workflow_created", userId: user.id, surface: "product", path: "/api/tasks", properties: { taskId: task.id, workflowType: task.taskType, taskType: task.taskType } });
+    await trackProductEventOnce({ eventName: "first_workflow_created", userId: user.id, surface: "product", path: "/api/tasks", properties: { taskId: task.id, workflowType: task.taskType, taskType: task.taskType } });
     await trackProductEvent({ eventName: "task_create", userId: user.id, surface: "product", path: "/api/tasks", properties: { taskId: task.id, taskType: task.taskType, topic: task.topic } });
     await trackGenerationStartedMilestone({ userId: user.id, taskId: task.id, taskType: task.taskType, surface: "product", path: "/api/tasks" });
     void runTask(task.id);

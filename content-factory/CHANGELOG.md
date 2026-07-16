@@ -2,6 +2,22 @@
 
 ## 2026-07-17
 
+### Beta Validation Readiness
+
+- Added migration `0028_beta_validation_readiness.sql` for Beta workflow events and richer feedback fields.
+- Added product events for `workflow_created`, `first_workflow_created`, and `generation_failed`.
+- Added workflow type, task id, duration, provider, Credits, and failure reason metadata to generation success/failure tracking where available.
+- Enhanced user feedback with result quality score, use case, and continue-use intent.
+- Updated Admin Feedback to show quality, use case, and continue-use signals.
+- Enhanced Admin Analytics with workflow usage, workflow success rate, average generation cost, Credits consumed, and feedback distribution for Beta testing.
+- Updated production readiness/checklist docs to reference migration `0028_beta_validation_readiness.sql`.
+
+### Validation
+
+- `pnpm lint`: passed
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm build`: passed
+
 ### Distribution MVP
 
 - Added a safe publishing-prep layer for TikTok, YouTube Shorts, and Xiaohongshu without external platform posting.

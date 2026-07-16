@@ -4,13 +4,13 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Beta Product Completion Sprint - Phase 5 Distribution MVP completed.
+Beta Validation Sprint - user testing infrastructure and analytics readiness.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
 ## Latest verified commit before this report
 
-`5eecb612bee817f3fa44fd66fee24d48572388d7`
+`4ee8e466a48c74d9427949f50df076a225dd904c`
 
 ## Verified user path
 
@@ -46,7 +46,7 @@ Important observed data:
 
 ## Supabase migration status
 
-Local migrations currently run from `0001` through `0027`.
+Local migrations currently run from `0001` through `0028`.
 
 Remote Supabase was found at `0026` during E2E. `0027_beta_experiment_tracking.sql` was applied with `supabase db push`.
 
@@ -55,6 +55,11 @@ Remote now reports:
 - `0001` through `0027`: applied
 
 This fixed missing `feedback_submitted` product analytics events. Before `0027` was applied, feedback rows were saved but the analytics event was rejected by the older `product_events_event_name_check` constraint.
+
+New local migration:
+
+- `0028_beta_validation_readiness.sql` adds Beta Validation events (`workflow_created`, `first_workflow_created`, `generation_failed`) and richer feedback fields (`result_quality`, `use_case`, `continue_use`).
+- Production Supabase still needs `supabase db push` before inviting external Beta users to use the new feedback and tracking fields.
 
 ## Provider status
 
@@ -154,6 +159,15 @@ SaaS operating layer status:
 - `/admin/beta-insights` provides lifecycle status, Beta Health Score, active users, likely-to-pay users, at-risk users, retention, and revenue-readiness signals.
 - `/api/admin/overview` now includes provider readiness, Beta activation rate, feedback queue health, task counts, Credits usage, and provider summaries for lightweight operations dashboards.
 
+Beta Validation readiness status:
+
+- Invite -> register -> bootstrap -> workspace -> create workflow -> generate -> result -> feedback is supported by existing product paths.
+- Product events now track workflow creation, first workflow creation, generation starts, generation success, generation failure, Credits consumed, and feedback submitted.
+- Success/failure events include workflow type, task id, duration, provider, Credits where available, and error reason on failure.
+- Feedback now captures satisfaction, result quality, use case, continue-use intent, task linkage, content feedback, and suggestions.
+- `/admin/analytics` now shows Beta user count, active/activated signals, workflow usage, success rate, average generation cost, Credits consumed, and feedback distribution.
+- Demo readiness uses existing Workflow Templates, Showcase, Studio demo preview, local Image Provider fallback, and local Video preview fallback. A demo account should be created with `/admin/beta` rather than hard-coded credentials.
+
 Distribution MVP status:
 
 - User-owned completed content can create distribution preparation jobs through `/api/distributions`.
@@ -223,3 +237,4 @@ Remaining risks:
 5. Short Drama local fallback creates SVG preview assets for video scenes. This is enough for Beta demo value, but production video quality depends on a real video provider.
 6. Provider readiness dry-run does not prove external provider account quota or generation quality; each real provider still needs one controlled paid smoke test before public Beta promises.
 7. Distribution MVP prepares export packages for manual publishing; real TikTok, YouTube Shorts, and Xiaohongshu publishing still requires platform OAuth, review, quota, and compliance work.
+8. `0028_beta_validation_readiness.sql` must be applied to the target Supabase project before the new feedback fields and event names work in production.

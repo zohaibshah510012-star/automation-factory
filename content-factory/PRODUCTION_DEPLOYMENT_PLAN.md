@@ -80,7 +80,7 @@ Current local migrations are continuous from:
 ```text
 0001_content_factory.sql
 ...
-0024_beta_operations.sql
+0028_beta_validation_readiness.sql
 ```
 
 Production deployment steps:
@@ -94,7 +94,7 @@ supabase migration list
 
 Acceptance criteria:
 
-- Remote Supabase migration list shows all migrations through `0024_beta_operations.sql`.
+- Remote Supabase migration list shows all migrations through `0028_beta_validation_readiness.sql`.
 - Required tables exist: `profiles`, `content_tasks`, `credit_transactions`, `plans`, `subscriptions`, `payment_providers`, `distribution_jobs`, `short_drama_assets`, `product_events`, `user_feedback`, `workspaces`.
 - Required RPCs exist: `grant_subscription_credits`, `admin_adjust_user_credits`.
 

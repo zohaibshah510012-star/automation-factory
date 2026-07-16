@@ -22,6 +22,10 @@ function timestamp() {
   return new Date().toISOString();
 }
 
+function durationMs(task: ContentTask) {
+  return Math.max(0, new Date(task.updatedAt).getTime() - new Date(task.createdAt).getTime());
+}
+
 function userFacingGenerationError(error: unknown) {
   return getProviderErrorMessage(error);
 }
@@ -264,9 +268,9 @@ export async function runTask(taskId: string) {
       status: "completed",
     });
     if (task.taskType === "drama" && task.userId) await createDramaSceneImages({ dramaId: task.id, userId: task.userId, topic: task.topic, scenes: content.storyboard });
-    await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, provider: getActiveProviderName() } });
+    await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, workflowType: task.taskType, provider: getActiveProviderName(), creditsUsed: task.creditsCharged ?? pricing.amount, durationMs: durationMs(task) } });
     if (task.userId) {
-      await trackProductEventOnce({ eventName: "first_generation_completed", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType } });
+      await trackProductEventOnce({ eventName: "first_generation_completed", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, workflowType: task.taskType, creditsUsed: task.creditsCharged ?? pricing.amount, durationMs: durationMs(task) } });
       if (task.assets.length) await trackProductEventOnce({ eventName: "first_asset_created", userId: task.userId, surface: "content", path: "task-store", properties: { taskId: task.id, assetCount: task.assets.length } });
     }
     await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_completed", task_id: task.id, metadata: { provider: getActiveProviderName() } });
@@ -293,6 +297,7 @@ export async function runTask(taskId: string) {
       status: "failed",
       error: task.error,
     });
+    await trackProductEvent({ eventName: "generation_failed", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, workflowType: task.taskType, provider: getActiveProviderName(), error: task.error, durationMs: durationMs(task) } });
     await getSupabaseServerClient()?.from("system_logs").insert({ level: "error", event: "task_failed", task_id: task.id, metadata: { type: getProviderErrorType(error) } });
     console.error("[automation-factory] workflow_failed", { taskId: task.id, type: getProviderErrorType(error) });
   }

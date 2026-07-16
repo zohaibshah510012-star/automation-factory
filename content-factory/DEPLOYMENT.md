@@ -1,6 +1,6 @@
 # Automation Factory Deployment Guide
 
-Production baseline: migration `0001_content_factory.sql` through `0024_beta_operations.sql`.
+Production baseline: migration `0001_content_factory.sql` through `0028_beta_validation_readiness.sql`.
 
 ## 1. Build verification
 
@@ -50,7 +50,7 @@ supabase migration list
 Expected local latest migration:
 
 ```text
-0024_beta_operations.sql
+0028_beta_validation_readiness.sql
 ```
 
 Key tables/RPCs expected after migration:

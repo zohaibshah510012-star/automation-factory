@@ -5,9 +5,9 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 type UsageRow = { provider: string | null; model: string | null; capability: string; credits_charged: number };
 type PaymentRow = { amount: number; status: string };
-type TaskRow = { status: string };
-type ProductEventRow = { event_name: string; surface: string; path: string | null; created_at: string };
-type FeedbackRow = { satisfaction: number; status: string; category: string };
+type TaskRow = { status: string; task_type: string | null; credits_charged: number | null };
+type ProductEventRow = { event_name: string; surface: string; path: string | null; properties: Record<string, unknown> | null; created_at: string };
+type FeedbackRow = { satisfaction: number; result_quality: number | null; continue_use: boolean | null; use_case: string | null; status: string; category: string };
 type InviteRow = { status: string };
 
 function sum(values: number[]) {
@@ -39,13 +39,13 @@ export async function GET(request: Request) {
 
     const [users, tasks, usage, prompts, payments, subscriptions, productEvents, feedback, invites] = await Promise.all([
       supabase.from("profiles").select("id", { count: "exact", head: true }),
-      supabase.from("content_tasks").select("status"),
+      supabase.from("content_tasks").select("status,task_type,credits_charged"),
       supabase.from("usage_history").select("provider,model,capability,credits_charged"),
       supabase.from("prompt_templates").select("name").eq("status", "published"),
       supabase.from("payments").select("amount,status"),
       supabase.from("subscriptions").select("status"),
-      supabase.from("product_events").select("event_name,surface,path,created_at").order("created_at", { ascending: false }).limit(200),
-      supabase.from("user_feedback").select("satisfaction,status,category").limit(200),
+      supabase.from("product_events").select("event_name,surface,path,properties,created_at").order("created_at", { ascending: false }).limit(1000),
+      supabase.from("user_feedback").select("satisfaction,result_quality,continue_use,use_case,status,category").limit(500),
       supabase.from("beta_invites").select("status"),
     ]);
 
@@ -71,8 +71,36 @@ export async function GET(request: Request) {
     const firstGenerationCompleted = eventCounts.first_generation_completed ?? 0;
     const totalGenerations = eventCounts.task_create ?? taskRows.length;
     const failedTasks = taskRows.filter((task) => task.status === "failed").length;
+    const completedTasks = taskRows.filter((task) => task.status === "completed").length;
+    const workflowUsage = taskRows.reduce<Record<string, number>>((counts, task) => {
+      const key = task.task_type ?? "unknown";
+      counts[key] = (counts[key] ?? 0) + 1;
+      return counts;
+    }, {});
+    const feedbackByCategory = feedbackRows.reduce<Record<string, number>>((counts, row) => {
+      counts[row.category] = (counts[row.category] ?? 0) + 1;
+      return counts;
+    }, {});
+    const feedbackBySatisfaction = feedbackRows.reduce<Record<string, number>>((counts, row) => {
+      const key = `${row.satisfaction}`;
+      counts[key] = (counts[key] ?? 0) + 1;
+      return counts;
+    }, {});
+    const feedbackByQuality = feedbackRows.reduce<Record<string, number>>((counts, row) => {
+      const key = row.result_quality ? `${row.result_quality}` : "unknown";
+      counts[key] = (counts[key] ?? 0) + 1;
+      return counts;
+    }, {});
+    const continueUse = {
+      yes: feedbackRows.filter((row) => row.continue_use === true).length,
+      no: feedbackRows.filter((row) => row.continue_use === false).length,
+      unknown: feedbackRows.filter((row) => row.continue_use === null).length,
+    };
     const averageSatisfaction = feedbackRows.length
       ? Number((feedbackRows.reduce((total, row) => total + Number(row.satisfaction ?? 0), 0) / feedbackRows.length).toFixed(1))
+      : 0;
+    const averageResultQuality = feedbackRows.filter((row) => row.result_quality).length
+      ? Number((feedbackRows.reduce((total, row) => total + Number(row.result_quality ?? 0), 0) / feedbackRows.filter((row) => row.result_quality).length).toFixed(1))
       : 0;
 
     return NextResponse.json(
@@ -104,10 +132,13 @@ export async function GET(request: Request) {
             signupComplete: eventCounts.signup_completed ?? eventCounts.signup_complete ?? 0,
             firstWorkspaceCreated: eventCounts.first_workspace_created ?? 0,
             templateSelect: eventCounts.template_select ?? 0,
-            taskCreate: eventCounts.task_create ?? 0,
-            firstGenerationStarted: eventCounts.first_generation_started ?? 0,
-            taskComplete: eventCounts.task_complete ?? 0,
-            firstGenerationCompleted,
+          taskCreate: eventCounts.task_create ?? 0,
+          workflowCreated: eventCounts.workflow_created ?? 0,
+          firstWorkflowCreated: eventCounts.first_workflow_created ?? 0,
+          firstGenerationStarted: eventCounts.first_generation_started ?? 0,
+          taskComplete: eventCounts.task_complete ?? 0,
+          generationFailed: eventCounts.generation_failed ?? failedTasks,
+          firstGenerationCompleted,
             firstAssetCreated: eventCounts.first_asset_created ?? 0,
             creditsConsumed: eventCounts.credits_consumed ?? 0,
             upgradeClick: eventCounts.upgrade_click ?? 0,
@@ -123,12 +154,23 @@ export async function GET(request: Request) {
           activatedUsers: firstGenerationCompleted,
           firstGenerationCompletionRate: signupUsers ? Number(((firstGenerationCompleted / signupUsers) * 100).toFixed(1)) : 0,
           averageGenerationsPerUser: userCount ? Number((totalGenerations / userCount).toFixed(2)) : 0,
+          workflowUsage,
+          successRate: taskRows.length ? Number(((completedTasks / taskRows.length) * 100).toFixed(1)) : 0,
+          averageGenerationCost: completedTasks ? Number((providerCost / completedTasks).toFixed(2)) : 0,
           creditsConsumed,
           failureRate: taskRows.length ? Number(((failedTasks / taskRows.length) * 100).toFixed(1)) : 0,
         },
         feedback: {
           total: feedbackRows.length,
           averageSatisfaction,
+          averageResultQuality,
+          distribution: {
+            byCategory: feedbackByCategory,
+            bySatisfaction: feedbackBySatisfaction,
+            byQuality: feedbackByQuality,
+            continueUse,
+            useCases: feedbackRows.map((row) => row.use_case).filter(Boolean).slice(0, 20),
+          },
           newCount: feedbackRows.filter((row) => row.status === "open").length,
         },
       },

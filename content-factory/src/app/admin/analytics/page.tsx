@@ -29,8 +29,11 @@ type AnalyticsData = {
       firstWorkspaceCreated: number;
       templateSelect: number;
       taskCreate: number;
+      workflowCreated: number;
+      firstWorkflowCreated: number;
       firstGenerationStarted: number;
       taskComplete: number;
+      generationFailed: number;
       firstGenerationCompleted: number;
       firstAssetCreated: number;
       creditsConsumed: number;
@@ -43,10 +46,25 @@ type AnalyticsData = {
     activatedUsers: number;
     firstGenerationCompletionRate: number;
     averageGenerationsPerUser: number;
+    workflowUsage: Record<string, number>;
+    successRate: number;
+    averageGenerationCost: number;
     creditsConsumed: number;
     failureRate: number;
   };
-  feedback: { total: number; averageSatisfaction: number; newCount: number };
+  feedback: {
+    total: number;
+    averageSatisfaction: number;
+    averageResultQuality: number;
+    newCount: number;
+    distribution: {
+      byCategory: Record<string, number>;
+      bySatisfaction: Record<string, number>;
+      byQuality: Record<string, number>;
+      continueUse: { yes: number; no: number; unknown: number };
+      useCases: string[];
+    };
+  };
 };
 
 async function authHeaders() {
@@ -86,9 +104,12 @@ export default function Analytics() {
     { label: "Signup complete", value: data?.productAnalytics.funnel.signupComplete ?? 0 },
     { label: "First workspace", value: data?.productAnalytics.funnel.firstWorkspaceCreated ?? 0 },
     { label: "Template select", value: data?.productAnalytics.funnel.templateSelect ?? 0 },
+    { label: "Workflow created", value: data?.productAnalytics.funnel.workflowCreated ?? 0 },
+    { label: "First workflow created", value: data?.productAnalytics.funnel.firstWorkflowCreated ?? 0 },
     { label: "Task create", value: data?.productAnalytics.funnel.taskCreate ?? 0 },
     { label: "First generation started", value: data?.productAnalytics.funnel.firstGenerationStarted ?? 0 },
     { label: "Task complete", value: data?.productAnalytics.funnel.taskComplete ?? 0 },
+    { label: "Generation failed", value: data?.productAnalytics.funnel.generationFailed ?? 0 },
     { label: "First generation completed", value: data?.productAnalytics.funnel.firstGenerationCompleted ?? 0 },
     { label: "First asset created", value: data?.productAnalytics.funnel.firstAssetCreated ?? 0 },
     { label: "Credits consumed event", value: data?.productAnalytics.funnel.creditsConsumed ?? 0 },
@@ -132,6 +153,8 @@ export default function Analytics() {
           { label: "Activated users", value: data?.betaMetrics.activatedUsers ?? 0, helper: "first generation complete" },
           { label: "First-gen rate", value: `${data?.betaMetrics.firstGenerationCompletionRate ?? 0}%`, helper: "completion / signup" },
           { label: "Avg generations", value: data?.betaMetrics.averageGenerationsPerUser ?? 0, helper: "per user" },
+          { label: "Workflow success", value: `${data?.betaMetrics.successRate ?? 0}%`, helper: "completed / total" },
+          { label: "Avg AI cost", value: currency(data?.betaMetrics.averageGenerationCost ?? 0), helper: "per completed generation" },
           { label: "Failure rate", value: `${data?.betaMetrics.failureRate ?? 0}%`, helper: `${data?.betaMetrics.creditsConsumed ?? 0} credits` },
         ].map((metric) => (
           <Card key={metric.label}>
@@ -183,6 +206,14 @@ export default function Analytics() {
               <Badge variant="secondary">{data?.feedback.averageSatisfaction ?? 0}/5</Badge>
             </div>
             <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">Average result quality</span>
+              <Badge variant="secondary">{data?.feedback.averageResultQuality ?? 0}/5</Badge>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-muted-foreground">Would continue</span>
+              <span className="text-sm font-medium">{data?.feedback.distribution.continueUse.yes ?? 0} yes / {data?.feedback.distribution.continueUse.no ?? 0} no</span>
+            </div>
+            <div className="flex items-center justify-between gap-3">
               <span className="text-sm text-muted-foreground">Total feedback</span>
               <span className="text-sm font-medium">{data?.feedback.total ?? 0}</span>
             </div>
@@ -193,6 +224,59 @@ export default function Analytics() {
             <Button render={<a href="/admin/feedback" />} variant="outline">
               View feedback
             </Button>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Workflow usage</CardTitle>
+            <CardDescription>Which Beta workflows users are trying.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Workflow</TableHead>
+                  <TableHead>Uses</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(data?.betaMetrics.workflowUsage ?? {}).map(([workflow, count]) => (
+                  <TableRow key={workflow}>
+                    <TableCell>{workflow}</TableCell>
+                    <TableCell>{count}</TableCell>
+                  </TableRow>
+                ))}
+                {!Object.keys(data?.betaMetrics.workflowUsage ?? {}).length ? (
+                  <TableRow>
+                    <TableCell colSpan={2} className="text-muted-foreground">No workflow usage yet.</TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Feedback distribution</CardTitle>
+            <CardDescription>Categories and use cases from Beta testers.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {Object.entries(data?.feedback.distribution.byCategory ?? {}).map(([category, count]) => (
+              <div className="flex items-center justify-between gap-3" key={category}>
+                <span className="text-sm text-muted-foreground">{category}</span>
+                <span className="text-sm font-medium">{count}</span>
+              </div>
+            ))}
+            {!Object.keys(data?.feedback.distribution.byCategory ?? {}).length ? <p className="text-sm text-muted-foreground">No feedback distribution yet.</p> : null}
+            {(data?.feedback.distribution.useCases ?? []).length ? (
+              <div className="mt-3 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+                Use cases: {(data?.feedback.distribution.useCases ?? []).join(", ")}
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       </section>

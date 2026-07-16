@@ -19,6 +19,9 @@ async function authHeaders() {
 
 export default function FeedbackPage() {
   const [satisfaction, setSatisfaction] = useState(5);
+  const [resultQuality, setResultQuality] = useState(5);
+  const [continueUse, setContinueUse] = useState("yes");
+  const [useCase, setUseCase] = useState("");
   const [category, setCategory] = useState("short_drama");
   const [contentTaskId, setContentTaskId] = useState("");
   const [contentFeedback, setContentFeedback] = useState("");
@@ -34,6 +37,9 @@ export default function FeedbackPage() {
       headers: { ...(await authHeaders()), "Content-Type": "application/json" },
       body: JSON.stringify({
         satisfaction,
+        result_quality: resultQuality,
+        use_case: useCase,
+        continue_use: continueUse === "yes",
         category,
         content_task_id: contentTaskId.trim() || null,
         content_feedback: contentFeedback,
@@ -45,6 +51,7 @@ export default function FeedbackPage() {
     setMessage(response.ok ? "Thanks — your feedback is now in the Beta review queue." : "Feedback submission failed. Please sign in and try again.");
     if (response.ok) {
       setContentTaskId("");
+      setUseCase("");
       setContentFeedback("");
       setSuggestion("");
     }
@@ -69,10 +76,14 @@ export default function FeedbackPage() {
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-5" onSubmit={submit}>
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-4">
               <div className="grid gap-2">
                 <label className="text-sm font-medium" htmlFor="satisfaction">Score 1-5</label>
                 <Input id="satisfaction" max={5} min={1} onChange={(event) => setSatisfaction(Number(event.target.value))} type="number" value={satisfaction} />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium" htmlFor="result_quality">Result quality 1-5</label>
+                <Input id="result_quality" max={5} min={1} onChange={(event) => setResultQuality(Number(event.target.value))} type="number" value={resultQuality} />
               </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium" htmlFor="category">Category</label>
@@ -84,6 +95,19 @@ export default function FeedbackPage() {
                   <option value="billing">Billing / credits</option>
                   <option value="general">General</option>
                 </select>
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium" htmlFor="continue_use">Would continue?</label>
+                <select className="h-8 rounded-lg border bg-background px-2 text-sm" id="continue_use" onChange={(event) => setContinueUse(event.target.value)} value={continueUse}>
+                  <option value="yes">Yes, I would keep using it</option>
+                  <option value="no">Not yet</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-[1fr_18rem]">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium" htmlFor="use_case">Use case</label>
+                <Input id="use_case" onChange={(event) => setUseCase(event.target.value)} placeholder="e.g. TikTok ads, short drama testing, product visuals" value={useCase} />
               </div>
               <div className="grid gap-2">
                 <label className="text-sm font-medium" htmlFor="content_task_id">Task ID optional</label>

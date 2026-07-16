@@ -8,11 +8,14 @@ export type ProductEventName =
   | "first_workspace_created"
   | "template_view"
   | "template_select"
+  | "workflow_created"
+  | "first_workflow_created"
   | "task_create"
   | "first_generation_started"
   | "second_generation_started"
   | "third_generation_started"
   | "task_complete"
+  | "generation_failed"
   | "first_generation_completed"
   | "first_asset_created"
   | "credits_consumed"
@@ -101,6 +104,9 @@ export type FeedbackInput = {
   category?: string;
   contentFeedback?: string;
   suggestion?: string;
+  resultQuality?: number | null;
+  useCase?: string | null;
+  continueUse?: boolean | null;
   source?: string;
   contentTaskId?: string | null;
 };
@@ -117,6 +123,9 @@ export async function createUserFeedback(input: FeedbackInput) {
       category: input.category ?? "general",
       content_feedback: input.contentFeedback ?? null,
       suggestion: input.suggestion ?? null,
+      result_quality: input.resultQuality ?? null,
+      use_case: input.useCase ?? null,
+      continue_use: input.continueUse ?? null,
       source: input.source ?? "dashboard",
       content_task_id: input.contentTaskId ?? null,
     })
@@ -133,6 +142,9 @@ export async function createUserFeedback(input: FeedbackInput) {
       feedbackId: data.id,
       category: input.category ?? "general",
       satisfaction: input.satisfaction,
+      resultQuality: input.resultQuality ?? null,
+      useCase: input.useCase ?? null,
+      continueUse: input.continueUse ?? null,
       contentTaskId: input.contentTaskId ?? null,
     },
   });

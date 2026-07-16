@@ -12,6 +12,9 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 type FeedbackRow = {
   id: string;
   satisfaction: number;
+  result_quality: number | null;
+  use_case: string | null;
+  continue_use: boolean | null;
   category: string;
   content_feedback: string | null;
   suggestion: string | null;
@@ -79,6 +82,9 @@ export default function AdminFeedbackPage() {
               <TableRow>
                 <TableHead>User</TableHead>
                 <TableHead>Score</TableHead>
+                <TableHead>Quality</TableHead>
+                <TableHead>Use case</TableHead>
+                <TableHead>Continue</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Task</TableHead>
                 <TableHead>Feedback</TableHead>
@@ -92,6 +98,9 @@ export default function AdminFeedbackPage() {
                 <TableRow key={item.id}>
                   <TableCell>{item.profiles?.email ?? item.profiles?.display_name ?? "-"}</TableCell>
                   <TableCell>{item.satisfaction}/5</TableCell>
+                  <TableCell>{item.result_quality ? `${item.result_quality}/5` : "-"}</TableCell>
+                  <TableCell className="max-w-44 truncate">{item.use_case ?? "-"}</TableCell>
+                  <TableCell>{item.continue_use === null ? "-" : item.continue_use ? "Yes" : "No"}</TableCell>
                   <TableCell>{item.category}</TableCell>
                   <TableCell className="max-w-48 truncate">{item.content_tasks?.title ?? item.content_tasks?.topic ?? "-"}</TableCell>
                   <TableCell className="max-w-64 whitespace-pre-wrap">{item.content_feedback ?? "-"}</TableCell>
@@ -110,7 +119,7 @@ export default function AdminFeedbackPage() {
               ))}
               {!feedback.length ? (
                 <TableRow>
-                  <TableCell className="text-muted-foreground" colSpan={8}>No feedback yet.</TableCell>
+                  <TableCell className="text-muted-foreground" colSpan={11}>No feedback yet.</TableCell>
                 </TableRow>
               ) : null}
             </TableBody>

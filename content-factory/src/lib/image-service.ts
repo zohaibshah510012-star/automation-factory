@@ -25,6 +25,10 @@ function contentTaskFromImageTask(task: ImageTask): ContentTask {
   };
 }
 
+function taskDurationMs(task: ImageTask) {
+  return Math.max(0, new Date(task.updatedAt).getTime() - new Date(task.createdAt).getTime());
+}
+
 async function syncImageContentTask(task: ImageTask, patch: Partial<{ status: ContentTask["status"]; error: string | null; creditsCharged: number }>) {
   const supabase = await requireStore();
   const { error } = await supabase.from("content_tasks").upsert({
@@ -98,8 +102,9 @@ export async function runImageTask(taskId: string) {
     await writeImageAsset(mapTask(completed as ImageTaskRow), image);
     await recordAiProviderCost({ userId: task.userId, contentTaskId: task.id, usageHistoryId: settlement.usageHistoryId, provider: image.provider, model: image.model, taskType: "image", creditsUsed: pricing.amount, status: "completed" });
     await supabase.from("system_logs").insert({ level: "info", event: "image_task_completed", user_id: task.userId, metadata: { imageTaskId: task.id, provider: image.provider, model: image.model } });
-    await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "image", path: "image-service", properties: { taskId: task.id, taskType: "image", provider: image.provider, model: image.model } });
-    await trackProductEventOnce({ eventName: "first_generation_completed", userId: task.userId, surface: "image", path: "image-service", properties: { taskId: task.id, taskType: "image" } });
+    const completedTask = mapTask(completed as ImageTaskRow);
+    await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "image", path: "image-service", properties: { taskId: task.id, taskType: "image", workflowType: "image", provider: image.provider, model: image.model, creditsUsed: pricing.amount, durationMs: taskDurationMs(completedTask) } });
+    await trackProductEventOnce({ eventName: "first_generation_completed", userId: task.userId, surface: "image", path: "image-service", properties: { taskId: task.id, taskType: "image", workflowType: "image", creditsUsed: pricing.amount, durationMs: taskDurationMs(completedTask) } });
     await trackProductEventOnce({ eventName: "first_asset_created", userId: task.userId, surface: "content", path: "image-service", properties: { taskId: task.id, assetType: "image" } });
     return mapTask(completed as ImageTaskRow);
   } catch (exception) {
@@ -111,6 +116,7 @@ export async function runImageTask(taskId: string) {
     await syncImageContentTask(failed ? mapTask(failed as ImageTaskRow) : task, { status: "failed", error: message, creditsCharged: 0 });
     await recordAiProviderCost({ userId: task.userId, contentTaskId: task.id, provider, model: task.model, taskType: "image", creditsUsed: 0, status: "failed", error: message, usage: pricing ? { estimatedCost: undefined } : null });
     await supabase.from("system_logs").insert({ level: "error", event: "image_task_failed", user_id: task.userId, metadata: { imageTaskId: task.id, provider, error: message } });
+    await trackProductEvent({ eventName: "generation_failed", userId: task.userId, surface: "image", path: "image-service", properties: { taskId: task.id, taskType: "image", workflowType: "image", provider, error: message, durationMs: failed ? taskDurationMs(mapTask(failed as ImageTaskRow)) : taskDurationMs(task) } });
     if (failed) return mapTask(failed as ImageTaskRow);
     throw exception;
   }
