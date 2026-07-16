@@ -4,7 +4,7 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Beta Product Completion Sprint - Phase 4 SaaS Operating Layer.
+Beta Product Completion Sprint - Phase 5 Distribution MVP completed.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
@@ -154,6 +154,16 @@ SaaS operating layer status:
 - `/admin/beta-insights` provides lifecycle status, Beta Health Score, active users, likely-to-pay users, at-risk users, retention, and revenue-readiness signals.
 - `/api/admin/overview` now includes provider readiness, Beta activation rate, feedback queue health, task counts, Credits usage, and provider summaries for lightweight operations dashboards.
 
+Distribution MVP status:
+
+- User-owned completed content can create distribution preparation jobs through `/api/distributions`.
+- Supported Beta platforms are `tiktok`, `youtube`, and `xiaohongshu`; `mock` remains available for internal compatibility.
+- Distribution jobs now generate an internal export package URL at `/api/distributions/[jobId]/export`.
+- Export packages include content summary, script/storyboard, saved assets, platform notes, and a manual publishing checklist.
+- Distribution creation validates that the requested `contentId` belongs to the authenticated user before creating a job.
+- Admin can view distribution jobs through the existing Admin distribution pages and APIs.
+- This is a safe Beta publishing-prep layer, not real external platform posting.
+
 Latest Image E2E result:
 
 - `/api/images`: created task successfully.
@@ -193,6 +203,17 @@ Latest Short Drama MVP E2E result:
 - `/assets`: `200`.
 - Admin dramas/tasks APIs: `200`.
 
+Latest Distribution MVP smoke result:
+
+- Local production preview started on `http://127.0.0.1:3001`.
+- `/api/distributions`: created a TikTok distribution preparation job.
+- `distribution_jobs.status`: `published`.
+- Generated export URL: `/api/distributions/[jobId]/export`.
+- Export package route: `200`.
+- Export payload version: `distribution-mvp-v1`.
+- Export payload included the saved asset list.
+- Ownership check added before job creation.
+
 Remaining risks:
 
 1. External OpenAI/Gemini image calls timed out from this local machine; production server networking/provider access still needs verification before promising external AI image generation.
@@ -201,3 +222,4 @@ Remaining risks:
 4. Local video provider is a Beta preview fallback, not a true rendered MP4/video model. Real video production still requires configured Kling or Runway credentials and provider smoke tests.
 5. Short Drama local fallback creates SVG preview assets for video scenes. This is enough for Beta demo value, but production video quality depends on a real video provider.
 6. Provider readiness dry-run does not prove external provider account quota or generation quality; each real provider still needs one controlled paid smoke test before public Beta promises.
+7. Distribution MVP prepares export packages for manual publishing; real TikTok, YouTube Shorts, and Xiaohongshu publishing still requires platform OAuth, review, quota, and compliance work.

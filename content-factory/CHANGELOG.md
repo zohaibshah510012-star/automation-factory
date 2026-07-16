@@ -2,6 +2,23 @@
 
 ## 2026-07-17
 
+### Distribution MVP
+
+- Added a safe publishing-prep layer for TikTok, YouTube Shorts, and Xiaohongshu without external platform posting.
+- Added authenticated distribution job listing and creation through `/api/distributions`.
+- Added `/api/distributions/[id]/export` to return a manual publishing package with content summary, assets, platform notes, and checklist.
+- Replaced `mock://` distribution output with internal export package URLs.
+- Added ownership validation so users can only create distribution jobs for their own content tasks.
+- Kept Admin distribution visibility through the existing Admin distribution APIs/pages.
+
+### Validation
+
+- `pnpm lint`: passed
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm build`: passed
+- Distribution smoke: passed against local production preview.
+- Verified distribution job creation, `published` status, internal export URL, export route `200`, payload version `distribution-mvp-v1`, and exported asset list.
+
 ### Short Drama MVP
 
 - Completed the Short Drama MVP vertical path from Create Center to Short Drama Result page.
