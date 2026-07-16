@@ -74,6 +74,10 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
   return "outline";
 }
 
+function isImagePreview(url: string) {
+  return url.endsWith(".svg") || url.endsWith(".png") || url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".webp");
+}
+
 export default function AssetsPage() {
   const [assets, setAssets] = useState<UnifiedAsset[]>([]);
   const [query, setQuery] = useState("");
@@ -195,6 +199,8 @@ export default function AssetsPage() {
               <Card className="overflow-hidden bg-white/95 shadow-xl shadow-slate-950/5" key={`${asset.kind}-${asset.id}`}>
                 <div className="flex aspect-video items-center justify-center bg-muted">
                   {asset.kind === "image" && asset.url && !asset.url.startsWith("mock://") ? (
+                    <Image unoptimized alt={asset.title} className="h-full w-full object-cover" height={360} src={asset.url} width={640} />
+                  ) : asset.kind === "video" && asset.url && !asset.url.startsWith("mock://") && isImagePreview(asset.url) ? (
                     <Image unoptimized alt={asset.title} className="h-full w-full object-cover" height={360} src={asset.url} width={640} />
                   ) : asset.kind === "video" && asset.url && !asset.url.startsWith("mock://") ? (
                     <video className="h-full w-full object-cover" controls preload="metadata" src={asset.url} />

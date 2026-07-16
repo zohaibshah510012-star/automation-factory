@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { RefreshCwIcon, SendIcon, VideoIcon } from "lucide-react";
@@ -25,6 +26,10 @@ type Task = {
 async function headers() {
   const session = await getSupabaseBrowserClient()?.auth.getSession();
   return { Authorization: `Bearer ${session?.data.session?.access_token ?? ""}` };
+}
+
+function isImagePreview(url: string) {
+  return url.endsWith(".svg") || url.endsWith(".png") || url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".webp");
 }
 
 export default function VideosPage() {
@@ -106,10 +111,16 @@ export default function VideosPage() {
               <CardAction><Badge variant={task.status === "failed" ? "destructive" : "secondary"}>{task.status}</Badge></CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
-              <div className="flex aspect-video items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                <VideoIcon className="mr-2 size-4" />
-                {task.videoUrl ? "Video ready" : "Result will appear here"}
-              </div>
+              {task.videoUrl && !task.videoUrl.startsWith("mock://") && isImagePreview(task.videoUrl) ? (
+                <Image unoptimized alt={task.prompt} className="aspect-video w-full rounded-lg object-cover" height={360} src={task.videoUrl} width={640} />
+              ) : task.videoUrl && !task.videoUrl.startsWith("mock://") ? (
+                <video className="aspect-video w-full rounded-lg object-cover" controls preload="metadata" src={task.videoUrl} />
+              ) : (
+                <div className="flex aspect-video items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                  <VideoIcon className="mr-2 size-4" />
+                  {task.videoUrl ? "Video ready" : "Result will appear here"}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 {task.provider ?? "Waiting for provider"}{task.model ? ` · ${task.model}` : ""}
               </p>

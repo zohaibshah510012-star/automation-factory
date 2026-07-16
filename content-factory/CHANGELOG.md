@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-07-17
+
+### Video Provider Beta E2E
+
+- Enabled the existing local video provider as a Beta-safe workflow fallback with real generated preview files instead of `mock://` URLs.
+- Saved local video preview assets under `/generated/[taskId]/video-preview.svg` so standalone production preview can serve the result.
+- Updated Video Detail, Video List, Task Result, and My Assets pages to render local video preview assets while preserving normal `<video>` playback for real provider URLs.
+- Documented `AI_VIDEO_PROVIDER=local` in environment templates and kept Runway/Kling as the intended production video providers.
+
+### Validation
+
+- `pnpm lint`: passed
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm build`: passed
+- Video E2E: passed with `AI_VIDEO_PROVIDER=local`
+- Verified `/api/videos`, `/tasks/[id]`, `/dashboard/videos/[id]`, `/assets`, generated asset route, Credits deduction, `usage_history`, asset persistence, Admin task access `200`, and non-admin Admin access `403`.
+
 ## 2026-07-16
 
 ### Image Provider Beta E2E

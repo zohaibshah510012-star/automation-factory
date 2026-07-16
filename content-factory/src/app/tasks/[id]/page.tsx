@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -86,6 +87,10 @@ function iconForAsset(type: string) {
   if (type.includes("image")) return ImageIcon;
   if (type.includes("video")) return VideoIcon;
   return FileTextIcon;
+}
+
+function isImagePreview(url: string) {
+  return url.endsWith(".svg") || url.endsWith(".png") || url.endsWith(".jpg") || url.endsWith(".jpeg") || url.endsWith(".webp");
 }
 
 export default function PublicTaskDetailPage() {
@@ -273,6 +278,15 @@ export default function PublicTaskDetailPage() {
                 const Icon = iconForAsset(asset.type);
                 return (
                   <div className="rounded-2xl border bg-background p-4" key={asset.id}>
+                    {asset.url && !asset.url.startsWith("mock://") ? (
+                      <div className="mb-4 overflow-hidden rounded-xl bg-muted">
+                        {asset.type.includes("image") || isImagePreview(asset.url) ? (
+                          <Image unoptimized alt={asset.name} className="aspect-video w-full object-cover" height={360} src={asset.url} width={640} />
+                        ) : asset.type.includes("video") ? (
+                          <video className="aspect-video w-full object-cover" controls preload="metadata" src={asset.url} />
+                        ) : null}
+                      </div>
+                    ) : null}
                     <div className="flex items-start gap-3">
                       <span className="grid size-10 place-items-center rounded-xl bg-muted">
                         <Icon className="size-5" />

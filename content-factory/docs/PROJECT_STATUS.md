@@ -1,16 +1,16 @@
 # Automation Factory Project Status
 
-Last updated: 2026-07-16
+Last updated: 2026-07-17
 
 ## Current phase
 
-Image Provider Beta E2E Verification.
+Video Provider Beta E2E Verification.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
 ## Latest verified commit before this report
 
-`a2e1fd365426404b1711a15bcf78f410ae2c2b2c`
+`5eecb612bee817f3fa44fd66fee24d48572388d7`
 
 ## Verified user path
 
@@ -66,11 +66,11 @@ The local provider now writes a real generated SVG file, persists the image task
 
 OpenAI and Gemini image provider adapters remain available, but local smoke tests against both external services failed from this machine with provider/network timeouts. Production can switch to `AI_IMAGE_PROVIDER=openai`, `gemini`, or `flux` after the target server network and provider account are confirmed.
 
-Video generation remains intentionally blocked until a dedicated video provider is configured:
+Video generation is now usable in the local Beta environment with `AI_VIDEO_PROVIDER=local`.
 
-- `/api/videos` returns `Video provider not configured`
+The local video provider writes a real generated SVG preview file, persists the video task, mirrors it into `content_tasks`, stores a video asset, and commits Credits. This gives Beta users a complete product path without returning `mock://` URLs.
 
-This is the correct safe behavior for Beta because video tasks do not silently fall back to the text provider.
+Runway and Kling provider adapters remain available for production video generation. Production should switch to `AI_VIDEO_PROVIDER=runway` or `AI_VIDEO_PROVIDER=kling` after provider account credentials, network access, response schema, and cost limits are confirmed.
 
 ## Credits status
 
@@ -90,6 +90,13 @@ Image Credits behavior also passed:
 - Final balance was `960`.
 - `credit_transactions` showed reserve committed.
 - `usage_history` recorded provider/model `local / local-svg-image`.
+
+Video Credits behavior passed:
+
+- Video workflow test user started with `1000` Credits.
+- Video task charged `100` Credits.
+- Final balance was `900`.
+- `usage_history` recorded provider/model `local / local-svg-video-preview`.
 
 ## Admin operations status
 
@@ -116,7 +123,7 @@ Only `docs/PROJECT_STATUS.md` is being created in this change because it was exp
 
 ## Current Beta readiness
 
-Beta user path is ready for invited text-generation users and local image workflow users.
+Beta user path is ready for invited text-generation users, local image workflow users, and local video workflow users.
 
 Latest Image E2E result:
 
@@ -129,9 +136,23 @@ Latest Image E2E result:
 - Credits: committed and deducted.
 - Admin task visibility: verified.
 
+Latest Video E2E result:
+
+- `/api/videos`: created task successfully.
+- `video_tasks.status`: `completed`.
+- `content_tasks.status`: `completed`.
+- Generated video preview URL: `/generated/[taskId]/video-preview.svg`.
+- Generated preview route: `200`.
+- Video asset row: created.
+- Credits: committed and deducted.
+- Task Result page: `200`.
+- Video detail page: `200`.
+- Assets page: `200`.
+- Admin task visibility: verified with admin `200`; normal user received `403`.
+
 Remaining risks:
 
 1. External OpenAI/Gemini image calls timed out from this local machine; production server networking/provider access still needs verification before promising external AI image generation.
 2. Local standalone preview must receive `.env.local` values through process environment; `.next/standalone` does not automatically include `.env.local`.
 3. E2E test data remains in Supabase for auditability and was not deleted.
-4. Video provider remains unconfigured.
+4. Local video provider is a Beta preview fallback, not a true rendered MP4/video model. Real video production still requires configured Kling or Runway credentials and provider smoke tests.

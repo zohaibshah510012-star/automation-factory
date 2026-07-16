@@ -76,6 +76,48 @@ function localSvg(prompt: string) {
 </svg>`;
 }
 
+function localVideoPreviewSvg(prompt: string, durationSeconds: number) {
+  const colors = colorFromPrompt(`video:${prompt}`);
+  const safePrompt = escapeXml(prompt.slice(0, 160));
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="Generated local video preview asset">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#050713"/>
+      <stop offset="45%" stop-color="${colors.primary}" stop-opacity="0.72"/>
+      <stop offset="100%" stop-color="#111827"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="72%" cy="24%" r="64%">
+      <stop offset="0%" stop-color="${colors.accent}" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="${colors.secondary}" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect width="1280" height="720" fill="url(#glow)"/>
+  <circle cx="1050" cy="146" r="170" fill="${colors.accent}" opacity="0.25" filter="url(#soft)"/>
+  <circle cx="178" cy="612" r="220" fill="${colors.secondary}" opacity="0.18" filter="url(#soft)"/>
+  <g transform="translate(92 76)">
+    <rect width="1096" height="568" rx="42" fill="#ffffff" opacity="0.08" stroke="#ffffff" stroke-opacity="0.22"/>
+    <rect x="42" y="38" width="1012" height="70" rx="24" fill="#ffffff" opacity="0.11"/>
+    <circle cx="84" cy="73" r="10" fill="#f87171"/>
+    <circle cx="120" cy="73" r="10" fill="#fbbf24"/>
+    <circle cx="156" cy="73" r="10" fill="#34d399"/>
+    <g transform="translate(84 154)">
+      <rect width="280" height="330" rx="30" fill="#ffffff" opacity="0.13"/>
+      <rect x="330" width="280" height="330" rx="30" fill="#ffffff" opacity="0.18"/>
+      <rect x="660" width="280" height="330" rx="30" fill="#ffffff" opacity="0.13"/>
+      <path d="M392 111l115 66-115 66z" fill="#ffffff" opacity="0.88"/>
+      <path d="M300 166h60M610 166h60" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.62"/>
+      <text x="0" y="386" fill="#ffffff" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="700">Automation Factory Video Preview</text>
+      <text x="0" y="430" fill="#ffffff" fill-opacity="0.72" font-family="Inter, Arial, sans-serif" font-size="20">${safePrompt}</text>
+      <text x="0" y="472" fill="#ffffff" fill-opacity="0.56" font-family="Inter, Arial, sans-serif" font-size="18">Local Beta provider · ${durationSeconds}s storyboard preview · replace with Kling/Runway in production</text>
+    </g>
+  </g>
+</svg>`;
+}
+
 export function createLocalProviders(): AiProviders {
   return {
     text: { async generateContentPack({ topic, brief }) { return localContent(topic, brief); } },
@@ -110,8 +152,22 @@ export function createLocalProviders(): AiProviders {
       },
     },
     video: {
-      async generateVideo({ taskId, prompt, model, durationSeconds }) { return { status: "completed" as const, provider: "local", model: model ?? "local-video", videoUrl: `mock://videos/${encodeURIComponent(prompt)}/${taskId}`, thumbnailUrl: "mock://thumbnails/local", metadata: { durationSeconds: durationSeconds ?? 5 } }; },
-      async getStatus() { return { status: "completed" as const }; },
+      async generateVideo({ taskId, prompt, model, durationSeconds }) {
+        const selectedDuration = durationSeconds ?? 5;
+        const selectedModel = model ?? "local-svg-video-preview";
+        const videoUrl = await saveGeneratedFile(taskId, "video-preview.svg", Buffer.from(localVideoPreviewSvg(prompt, selectedDuration), "utf8"));
+        return {
+          status: "completed" as const,
+          provider: "local",
+          model: selectedModel,
+          videoUrl,
+          thumbnailUrl: videoUrl,
+          metadata: { durationSeconds: selectedDuration, format: "svg-preview", betaFallback: true },
+        };
+      },
+      async getStatus({ taskId }) {
+        return { status: "completed" as const, videoUrl: `/generated/${taskId}/video-preview.svg`, thumbnailUrl: `/generated/${taskId}/video-preview.svg`, metadata: { format: "svg-preview", betaFallback: true } };
+      },
       async render() {
         throw new ProviderConfigurationError("Local video provider is not configured in this MVP.");
       },
