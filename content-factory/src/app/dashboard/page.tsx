@@ -250,6 +250,34 @@ export default function DashboardHomePage() {
         </Card>
       </section>
 
+      <section className="mx-auto grid max-w-7xl gap-4 px-6 pb-8 lg:px-8">
+        <Card className="bg-white/95 shadow-xl shadow-slate-950/5">
+          <CardHeader>
+            <CardTitle>New here? Start in 3 steps</CardTitle>
+            <CardDescription>We designed the first session so a new user can get to value quickly without needing help.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-cols-3">
+            {[
+              { step: "1", title: "Pick a workflow", description: "Choose TikTok Ad, short drama, image, video, or content from the Create Center." },
+              { step: "2", title: "Describe your need", description: "Add one clear brief and let the wizard shape the right AI task." },
+              { step: "3", title: "Review your result", description: "Open the task page, inspect the result, and save it to My Assets." },
+            ].map((item) => (
+              <div className="rounded-2xl border bg-background p-4" key={item.step}>
+                <p className="text-xs text-muted-foreground">Step {item.step}</p>
+                <p className="mt-2 font-medium">{item.title}</p>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">{item.description}</p>
+              </div>
+            ))}
+            <div className="md:col-span-3">
+              <Button render={<Link href="/create" />}>
+                Start creating
+                <ArrowRightIcon data-icon="inline-end" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       <section className="mx-auto grid max-w-7xl gap-4 px-6 pb-8 pt-2 lg:grid-cols-4 lg:px-8">
         {quickActions.map((action) => (
           <Card className="group border-slate-200/80 bg-white/90 shadow-xl shadow-slate-950/5 transition duration-200 hover:-translate-y-1 hover:shadow-2xl" key={action.title}>
@@ -301,7 +329,7 @@ export default function DashboardHomePage() {
                 </Link>
               );
             })}
-            {!tasks.length ? <p className="rounded-2xl border bg-background p-5 text-sm text-muted-foreground">No tasks yet. Start with TikTok Ad, 小红书内容, 产品宣传视频, 短剧生成, or YouTube Shorts.</p> : null}
+            {!tasks.length ? <p className="rounded-2xl border bg-background p-5 text-sm text-muted-foreground">Your first workflow run will appear here after you create it from the wizard.</p> : null}
           </CardContent>
         </Card>
 
@@ -333,7 +361,7 @@ export default function DashboardHomePage() {
                 </Link>
               );
             })}
-            {!assets.length ? <p className="rounded-2xl border bg-background p-5 text-sm text-muted-foreground">No completed works yet. Your generated results will appear here.</p> : null}
+            {!assets.length ? <p className="rounded-2xl border bg-background p-5 text-sm text-muted-foreground">Completed results appear here automatically after generation finishes.</p> : null}
           </CardContent>
         </Card>
       </section>

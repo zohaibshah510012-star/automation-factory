@@ -131,7 +131,7 @@ export default function AssetsPage() {
     }));
 
     setAssets([...textAssets, ...imageAssets, ...videoAssets].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
-    if (!contentResponse.ok && !imageResponse.ok && !videoResponse.ok) setMessage("Sign in to view your assets.");
+    if (!contentResponse.ok && !imageResponse.ok && !videoResponse.ok) setMessage("Open the Create Center to generate your first asset.");
     else setMessage("");
   }, []);
 
@@ -232,7 +232,7 @@ export default function AssetsPage() {
         {!visible.length ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
-              No matching assets yet. Create your first AI asset from the Create Center.
+              No matching assets yet. Try a different filter or create your first asset from the Create Center.
             </CardContent>
           </Card>
         ) : null}

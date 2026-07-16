@@ -38,7 +38,7 @@ export default function WorkspacesPage() {
 
   const load = useCallback(async () => {
     const response = await fetch("/api/workspaces", { headers: await authHeaders(), cache: "no-store" });
-    if (!response.ok) return setMessage("Please sign in to view workspaces.");
+    if (!response.ok) return setMessage("Open the workspace you want to manage, or create your first one below.");
     const data = await response.json();
     setWorkspaces(data.workspaces ?? []);
     const firstWorkspace = data.workspaces?.[0]?.workspaces?.id;
@@ -67,7 +67,7 @@ export default function WorkspacesPage() {
       body: JSON.stringify({ name }),
     });
     if (!response.ok) {
-      setMessage("Unable to create workspace.");
+      setMessage("Create workspace failed. Try again from the form below.");
       return;
     }
     setName("");
@@ -117,7 +117,7 @@ export default function WorkspacesPage() {
                 </button>
               );
             })}
-            {!workspaces.length && <p className="text-sm text-muted-foreground">No workspace yet.</p>}
+            {!workspaces.length && <p className="text-sm text-muted-foreground">Create your first workspace to begin collaborating.</p>}
           </CardContent>
         </Card>
 

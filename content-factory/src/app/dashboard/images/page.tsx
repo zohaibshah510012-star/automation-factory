@@ -120,7 +120,7 @@ export default function ImagesPage() {
           </Card>
         ))}
       </section>
-      {!tasks.length ? <Card><CardContent className="py-12 text-center text-muted-foreground">No image tasks yet.</CardContent></Card> : null}
+      {!tasks.length ? <Card><CardContent className="py-12 text-center text-muted-foreground">Create your first image workflow from the Create Center.</CardContent></Card> : null}
     </main>
   );
 }
