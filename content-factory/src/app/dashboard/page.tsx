@@ -45,6 +45,7 @@ async function bootstrapAccount() {
     body: JSON.stringify({ inviteCode }),
   });
   if (response.ok && inviteCode) window.localStorage.removeItem("automation_factory_beta_invite_code");
+  if (!response.ok) throw new Error("Beta invite required");
 }
 
 const quickActions = [
