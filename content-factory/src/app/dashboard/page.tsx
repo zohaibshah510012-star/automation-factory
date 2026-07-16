@@ -119,6 +119,7 @@ export default function DashboardHomePage() {
   return (
     <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.18),transparent_36%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.14),transparent_32%),linear-gradient(180deg,#050713_0%,#0b1020_48%,#f8fafc_48%,#f8fafc_100%)]">
       <TrackPageView surface="dashboard" properties={{ page: "dashboard_home" }} />
+      <TrackPageView eventName="return_visit" surface="dashboard" properties={{ page: "dashboard_home" }} />
 
       <section className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-8 text-white lg:px-8">
         <header className="flex flex-wrap items-center justify-between gap-4">

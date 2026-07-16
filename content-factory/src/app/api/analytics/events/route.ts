@@ -16,12 +16,17 @@ const allowedEvents = new Set<ProductEventName>([
   "template_select",
   "task_create",
   "first_generation_started",
+  "second_generation_started",
+  "third_generation_started",
   "task_complete",
   "first_generation_completed",
   "first_asset_created",
   "credits_consumed",
+  "return_visit",
   "billing_view",
+  "pricing_view",
   "upgrade_click",
+  "feedback_submitted",
 ]);
 
 async function optionalUserId(request: Request) {

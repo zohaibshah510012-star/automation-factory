@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ActivityIcon, BarChart3Icon, CoinsIcon, RefreshCwIcon, TrendingUpIcon, UsersIcon } from "lucide-react";
+import {
+  ActivityIcon,
+  AlertTriangleIcon,
+  BarChart3Icon,
+  CoinsIcon,
+  HeartPulseIcon,
+  RefreshCwIcon,
+  SparklesIcon,
+  TargetIcon,
+  TrendingUpIcon,
+  UsersIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,19 +20,28 @@ import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
+type LifecycleStatus = "NEW" | "ACTIVATED" | "ENGAGED" | "POWER_USER" | "AT_RISK";
+
+type BetaUser = {
+  id: string;
+  email: string | null;
+  registeredAt: string;
+  inviteSource: string;
+  latestActivity: string | null;
+  currentPlan: string;
+  subscriptionStatus: string;
+  lifecycleStatus: LifecycleStatus;
+  betaHealthScore: number;
+  generationCount: number;
+  completedGenerations: number;
+  creditsConsumed: number;
+  returnVisits: number;
+  feedbackCount: number;
+  upgradeIntent: number;
+};
+
 type BetaInsights = {
-  users: Array<{
-    id: string;
-    email: string | null;
-    registeredAt: string;
-    inviteSource: string;
-    latestActivity: string | null;
-    currentPlan: string;
-    subscriptionStatus: string;
-    generationCount: number;
-    creditsConsumed: number;
-    upgradeIntent: number;
-  }>;
+  users: BetaUser[];
   activation: {
     registeredUsers: number;
     firstGenerationCompletedUsers: number;
@@ -43,6 +63,13 @@ type BetaInsights = {
     upgradeClicks: number;
     billingFeedback: number;
   };
+  experiment: {
+    lifecycleCounts: Record<LifecycleStatus, number>;
+    averageHealthScore: number;
+    mostActive: BetaUser[];
+    likelyToPay: BetaUser[];
+    atRisk: BetaUser[];
+  };
   generatedAt: string;
 };
 
@@ -53,6 +80,46 @@ async function authHeaders() {
 
 function formatDate(value: string | null) {
   return value ? new Date(value).toLocaleString() : "-";
+}
+
+function lifecycleVariant(status: LifecycleStatus): "default" | "secondary" | "destructive" | "outline" {
+  if (status === "POWER_USER") return "default";
+  if (status === "ENGAGED" || status === "ACTIVATED") return "secondary";
+  if (status === "AT_RISK") return "destructive";
+  return "outline";
+}
+
+function healthTone(score: number) {
+  if (score >= 75) return "text-emerald-600";
+  if (score >= 45) return "text-amber-600";
+  return "text-destructive";
+}
+
+function UserSignalList({ users, empty, signal }: { users: BetaUser[]; empty: string; signal: (user: BetaUser) => string }) {
+  if (!users.length) return <p className="text-sm text-muted-foreground">{empty}</p>;
+
+  return (
+    <div className="flex flex-col gap-3">
+      {users.map((user) => (
+        <div className="rounded-lg border bg-background/60 p-3" key={user.id}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{user.email ?? "Unknown user"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{signal(user)}</p>
+            </div>
+            <div className={`shrink-0 text-sm font-semibold ${healthTone(user.betaHealthScore)}`}>
+              {user.betaHealthScore}
+            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant={lifecycleVariant(user.lifecycleStatus)}>{user.lifecycleStatus}</Badge>
+            <Badge variant="outline">{user.generationCount} gens</Badge>
+            <Badge variant="outline">{user.creditsConsumed} credits</Badge>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function BetaInsightsPage() {
@@ -106,6 +173,12 @@ export default function BetaInsightsPage() {
       icon: CoinsIcon,
     },
     {
+      label: "Health score",
+      value: data?.experiment.averageHealthScore ?? "-",
+      helper: "avg Beta health",
+      icon: HeartPulseIcon,
+    },
+    {
       label: "Revenue signals",
       value: data?.revenueReadiness.upgradeIntentRecords ?? "-",
       helper: `${data?.revenueReadiness.upgradeClicks ?? 0} clicks / ${data?.revenueReadiness.billingFeedback ?? 0} feedback`,
@@ -148,6 +221,77 @@ export default function BetaInsightsPage() {
         ))}
       </section>
 
+      <section className="grid gap-6 lg:grid-cols-[1fr_1fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Lifecycle distribution</CardTitle>
+            <CardDescription>Where Beta users sit in the experiment funnel.</CardDescription>
+            <CardAction>
+              <TargetIcon />
+            </CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {(["NEW", "ACTIVATED", "ENGAGED", "POWER_USER", "AT_RISK"] as LifecycleStatus[]).map((status) => (
+              <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/60 px-3 py-2" key={status}>
+                <Badge variant={lifecycleVariant(status)}>{status}</Badge>
+                <span className="text-sm font-semibold">{data?.experiment.lifecycleCounts[status] ?? 0}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Most active users</CardTitle>
+            <CardDescription>Highest usage and strongest engagement signals.</CardDescription>
+            <CardAction>
+              <SparklesIcon />
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <UserSignalList
+              empty="No active Beta users yet."
+              signal={(user) => `${user.completedGenerations} completed / ${user.returnVisits} return visits`}
+              users={data?.experiment.mostActive ?? []}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Likely to pay</CardTitle>
+            <CardDescription>Upgrade intent ranked by clicks, feedback, and credits demand.</CardDescription>
+            <CardAction>
+              <TrendingUpIcon />
+            </CardAction>
+          </CardHeader>
+          <CardContent>
+            <UserSignalList
+              empty="No upgrade-intent signals yet."
+              signal={(user) => `${user.upgradeIntent} upgrade signals / ${user.currentPlan} plan`}
+              users={data?.experiment.likelyToPay ?? []}
+            />
+          </CardContent>
+        </Card>
+      </section>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>At-risk users</CardTitle>
+          <CardDescription>Activated users with low recent activity or weak Beta Health Score.</CardDescription>
+          <CardAction>
+            <AlertTriangleIcon />
+          </CardAction>
+        </CardHeader>
+        <CardContent>
+          <UserSignalList
+            empty="No at-risk users detected."
+            signal={(user) => `Last activity ${formatDate(user.latestActivity)} / ${user.feedbackCount} feedback items`}
+            users={data?.experiment.atRisk ?? []}
+          />
+        </CardContent>
+      </Card>
+
       <section className="grid gap-6 lg:grid-cols-[1fr_24rem]">
         <Card>
           <CardHeader>
@@ -163,8 +307,12 @@ export default function BetaInsightsPage() {
                   <TableHead>Invite source</TableHead>
                   <TableHead>Recent activity</TableHead>
                   <TableHead>Plan</TableHead>
+                  <TableHead>Lifecycle</TableHead>
+                  <TableHead>Health</TableHead>
                   <TableHead>Generations</TableHead>
                   <TableHead>Credits</TableHead>
+                  <TableHead>Returns</TableHead>
+                  <TableHead>Feedback</TableHead>
                   <TableHead>Upgrade intent</TableHead>
                 </TableRow>
               </TableHeader>
@@ -183,14 +331,20 @@ export default function BetaInsightsPage() {
                         </Badge>
                       </div>
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={lifecycleVariant(user.lifecycleStatus)}>{user.lifecycleStatus}</Badge>
+                    </TableCell>
+                    <TableCell className={`font-semibold ${healthTone(user.betaHealthScore)}`}>{user.betaHealthScore}</TableCell>
                     <TableCell>{user.generationCount}</TableCell>
                     <TableCell>{user.creditsConsumed}</TableCell>
+                    <TableCell>{user.returnVisits}</TableCell>
+                    <TableCell>{user.feedbackCount}</TableCell>
                     <TableCell>{user.upgradeIntent}</TableCell>
                   </TableRow>
                 ))}
                 {!data?.users.length ? (
                   <TableRow>
-                    <TableCell className="text-muted-foreground" colSpan={8}>No Beta users yet.</TableCell>
+                    <TableCell className="text-muted-foreground" colSpan={12}>No Beta users yet.</TableCell>
                   </TableRow>
                 ) : null}
               </TableBody>

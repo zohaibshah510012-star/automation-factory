@@ -62,6 +62,8 @@ type SubscriptionRow = {
   plans: { name: string; price: number; credits: number } | null;
 };
 
+type LifecycleStatus = "NEW" | "ACTIVATED" | "ENGAGED" | "POWER_USER" | "AT_RISK";
+
 function toTime(value?: string | null) {
   return value ? new Date(value).getTime() : 0;
 }
@@ -84,6 +86,28 @@ function taskBucket(taskType?: string | null) {
 function hasUpgradeIntent(feedback: FeedbackRow) {
   const haystack = `${feedback.category} ${feedback.content_feedback ?? ""} ${feedback.suggestion ?? ""}`.toLowerCase();
   return /billing|upgrade|price|pricing|plan|credits|付费|升级|套餐|额度/.test(haystack);
+}
+
+function clampScore(value: number) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function lifecycleFor(input: { activated: boolean; generationCount: number; creditsConsumed: number; returnVisits: number; latestActivity: string | null; now: number }): LifecycleStatus {
+  const inactiveDays = input.latestActivity ? (input.now - toTime(input.latestActivity)) / 86_400_000 : Number.POSITIVE_INFINITY;
+  if (input.activated && inactiveDays > 14) return "AT_RISK";
+  if (input.generationCount >= 10 || input.creditsConsumed >= 500) return "POWER_USER";
+  if (input.generationCount >= 3 || input.returnVisits >= 2) return "ENGAGED";
+  if (input.activated) return "ACTIVATED";
+  return "NEW";
+}
+
+function betaHealthScore(input: { activated: boolean; generationCount: number; creditsConsumed: number; returnedWithinSevenDays: boolean; activeRecently: boolean; feedbackCount: number; averageSatisfaction: number }) {
+  const activation = input.activated ? 25 : 0;
+  const usageFrequency = Math.min(25, input.generationCount * 5);
+  const credits = Math.min(20, input.creditsConsumed / 10);
+  const retention = (input.returnedWithinSevenDays ? 10 : 0) + (input.activeRecently ? 10 : 0);
+  const feedback = input.feedbackCount ? Math.min(10, 4 + input.averageSatisfaction) : 0;
+  return clampScore(activation + usageFrequency + credits + retention + feedback);
 }
 
 export async function GET(request: Request) {
@@ -215,12 +239,39 @@ export async function GET(request: Request) {
       const subscription = planByUser.get(profile.id);
       const upgradeClicks = userEvents.filter((event) => event.event_name === "upgrade_click").length;
       const upgradeFeedback = userFeedback.filter(hasUpgradeIntent).length;
+      const returnVisits = userEvents.filter((event) => event.event_name === "return_visit").length;
+      const completedGenerations = userTasks.filter((task) => task.status === "completed").length;
+      const activated = completedFirstGenUsers.has(profile.id) || completedGenerations > 0;
+      const userCreditsConsumed = userUsage.reduce((total, row) => total + Number(row.credits_charged ?? 0), 0);
+      const averageSatisfaction = userFeedback.length
+        ? userFeedback.reduce((total, row) => total + Number(row.satisfaction ?? 0), 0) / userFeedback.length
+        : 0;
       const latestActivity = maxDate([
         ...userEvents.map((event) => event.created_at),
         ...userTasks.map((task) => task.updated_at ?? task.created_at),
         ...userUsage.map((row) => row.created_at),
         ...userFeedback.map((row) => row.created_at),
       ]);
+      const signupAt = minDate(userEvents.filter((event) => event.event_name === "signup_completed" || event.event_name === "signup_complete")) ?? profile.created_at;
+      const activityDates = [
+        ...userEvents.map((event) => event.created_at),
+        ...userTasks.map((task) => task.updated_at ?? task.created_at),
+        ...userUsage.map((row) => row.created_at),
+        ...userFeedback.map((row) => row.created_at),
+      ];
+      const returnedWithinSevenDays = activityDates.some((date) => {
+        const delta = toTime(date) - toTime(signupAt);
+        return delta > 60_000 && delta <= sevenDaysMs;
+      });
+      const activeRecently = Boolean(latestActivity && now - toTime(latestActivity) <= sevenDaysMs);
+      const lifecycleStatus = lifecycleFor({
+        activated,
+        generationCount: userTasks.length,
+        creditsConsumed: userCreditsConsumed,
+        returnVisits,
+        latestActivity,
+        now,
+      });
 
       return {
         id: profile.id,
@@ -230,11 +281,34 @@ export async function GET(request: Request) {
         latestActivity,
         currentPlan: subscription?.plans?.name ?? "Free",
         subscriptionStatus: subscription?.status ?? "none",
+        lifecycleStatus,
+        betaHealthScore: betaHealthScore({
+          activated,
+          generationCount: userTasks.length,
+          creditsConsumed: userCreditsConsumed,
+          returnedWithinSevenDays,
+          activeRecently,
+          feedbackCount: userFeedback.length,
+          averageSatisfaction,
+        }),
         generationCount: userTasks.length,
-        creditsConsumed: userUsage.reduce((total, row) => total + Number(row.credits_charged ?? 0), 0),
+        completedGenerations,
+        creditsConsumed: userCreditsConsumed,
+        returnVisits,
+        feedbackCount: userFeedback.length,
         upgradeIntent: upgradeClicks + upgradeFeedback,
       };
     });
+    const mostActive = [...betaUsers]
+      .sort((a, b) => b.generationCount - a.generationCount || b.betaHealthScore - a.betaHealthScore)
+      .slice(0, 5);
+    const likelyToPay = [...betaUsers]
+      .sort((a, b) => b.upgradeIntent - a.upgradeIntent || b.creditsConsumed - a.creditsConsumed)
+      .slice(0, 5);
+    const atRisk = betaUsers
+      .filter((user) => user.lifecycleStatus === "AT_RISK" || (user.latestActivity && now - toTime(user.latestActivity) > sevenDaysMs && user.generationCount > 0))
+      .sort((a, b) => a.betaHealthScore - b.betaHealthScore)
+      .slice(0, 5);
 
     return NextResponse.json({
       users: betaUsers,
@@ -263,6 +337,16 @@ export async function GET(request: Request) {
         upgradeIntentRecords: betaUsers.reduce((total, user) => total + user.upgradeIntent, 0),
         upgradeClicks: betaEvents.filter((event) => event.event_name === "upgrade_click").length,
         billingFeedback: betaFeedback.filter(hasUpgradeIntent).length,
+      },
+      experiment: {
+        lifecycleCounts: betaUsers.reduce<Record<LifecycleStatus, number>>((counts, user) => {
+          counts[user.lifecycleStatus] += 1;
+          return counts;
+        }, { NEW: 0, ACTIVATED: 0, ENGAGED: 0, POWER_USER: 0, AT_RISK: 0 }),
+        averageHealthScore: betaUsers.length ? Number((betaUsers.reduce((total, user) => total + user.betaHealthScore, 0) / betaUsers.length).toFixed(1)) : 0,
+        mostActive,
+        likelyToPay,
+        atRisk,
       },
       generatedAt: new Date().toISOString(),
     }, { headers: { "Cache-Control": "no-store" } });

@@ -10,12 +10,17 @@ export type ProductEventName =
   | "template_select"
   | "task_create"
   | "first_generation_started"
+  | "second_generation_started"
+  | "third_generation_started"
   | "task_complete"
   | "first_generation_completed"
   | "first_asset_created"
   | "credits_consumed"
+  | "return_visit"
   | "billing_view"
-  | "upgrade_click";
+  | "pricing_view"
+  | "upgrade_click"
+  | "feedback_submitted";
 
 type ProductEventInput = {
   eventName: ProductEventName;
@@ -58,6 +63,38 @@ export async function trackProductEventOnce(input: ProductEventInput & { userId:
   await trackProductEvent(input);
 }
 
+export async function trackGenerationStartedMilestone(input: {
+  userId: string;
+  taskId: string;
+  taskType?: string | null;
+  surface: string;
+  path: string;
+}) {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) return;
+
+  const { count, error } = await supabase
+    .from("content_tasks")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", input.userId);
+  if (error) return;
+
+  const eventName =
+    count === 1 ? "first_generation_started"
+      : count === 2 ? "second_generation_started"
+        : count === 3 ? "third_generation_started"
+          : null;
+
+  if (!eventName) return;
+  await trackProductEventOnce({
+    eventName,
+    userId: input.userId,
+    surface: input.surface,
+    path: input.path,
+    properties: { taskId: input.taskId, taskType: input.taskType },
+  });
+}
+
 export type FeedbackInput = {
   userId: string;
   satisfaction: number;
@@ -87,6 +124,18 @@ export async function createUserFeedback(input: FeedbackInput) {
     .single();
 
   if (error || !data) throw new Error(error?.message ?? "Unable to save feedback");
+  await trackProductEvent({
+    eventName: "feedback_submitted",
+    userId: input.userId,
+    surface: "feedback",
+    path: input.source ?? "dashboard",
+    properties: {
+      feedbackId: data.id,
+      category: input.category ?? "general",
+      satisfaction: input.satisfaction,
+      contentTaskId: input.contentTaskId ?? null,
+    },
+  });
   return data;
 }
 

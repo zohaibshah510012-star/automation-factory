@@ -101,6 +101,7 @@ export default function BillingDashboard() {
   return (
     <main className="mx-auto flex max-w-6xl flex-col gap-6 p-6">
       <TrackPageView eventName="billing_view" surface="billing" properties={{ page: "dashboard_billing" }} />
+      <TrackPageView eventName="pricing_view" surface="billing" properties={{ page: "dashboard_billing" }} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">Billing</p>
