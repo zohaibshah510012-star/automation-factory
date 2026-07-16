@@ -26,6 +26,17 @@
 - Improved Flux, Kling, and Runway error messages to include HTTP status and a short provider response body.
 - Verified `/api/admin/providers/test` returns capability readiness without triggering paid provider generation.
 
+### Beta Experience Polish
+
+- Improved Create Center error states for insufficient Credits, provider configuration, login/invite issues, and oversized prompts.
+- Kept the first-session path focused on Dashboard -> Create -> Template -> Generate -> Result -> Assets -> Feedback.
+
+### Validation
+
+- `pnpm lint`: passed
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm build`: passed
+
 ### Video Provider Beta E2E
 
 - Enabled the existing local video provider as a Beta-safe workflow fallback with real generated preview files instead of `mock://` URLs.

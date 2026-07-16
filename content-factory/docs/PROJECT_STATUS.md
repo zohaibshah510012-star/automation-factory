@@ -4,7 +4,7 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Beta Product Completion Sprint - Phase 2 Provider Readiness.
+Beta Product Completion Sprint - Phase 3 Beta Experience Polish.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
@@ -141,6 +141,12 @@ Production Provider upgrade status:
 - Admin Provider readiness API now checks text/image/video configuration without triggering paid generation.
 - Flux/Kling/Runway errors now include HTTP status and response summaries for production debugging.
 - Current local machine readiness: text `deepseek` configured, image `local` Beta fallback ready, video provider not configured unless `AI_VIDEO_PROVIDER` is injected into the runtime environment.
+
+Beta experience polish status:
+
+- Create Center now gives clearer user-facing recovery messages for insufficient Credits, provider configuration issues, invite/login issues, and oversized prompts.
+- The primary first-session path remains: Dashboard -> Create -> Template -> Generate -> Result -> Assets -> Feedback.
+- Short Drama creation now opens the dedicated Short Drama Result page.
 
 Latest Image E2E result:
 

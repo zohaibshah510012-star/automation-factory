@@ -121,7 +121,12 @@ export default function CreateCenterPage() {
     const payload = (await response.json().catch(() => ({}))) as { task?: { id?: string }; error?: string };
     if (!response.ok || !payload.task?.id) {
       setLoading(false);
-      setMessage(payload.error ?? "Unable to create task. Check login, credits, or provider configuration.");
+      const error = payload.error ?? "Unable to create task.";
+      setMessage(error === "INSUFFICIENT_CREDITS"
+        ? "You do not have enough Credits for this workflow. Open Billing to upgrade or ask the Beta admin for more trial Credits."
+        : error.includes("provider") || error.includes("Provider")
+          ? `${error} Ask the Beta admin to check Provider readiness in Admin → Providers.`
+          : `${error} Check your login, invite, or try a smaller prompt.`);
       return;
     }
 
