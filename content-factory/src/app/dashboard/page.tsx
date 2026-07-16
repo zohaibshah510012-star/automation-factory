@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrackPageView } from "@/components/product-event-tracker";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { workflowTemplates, type WorkflowCapability } from "@/lib/workflow-templates";
 
 type BillingSummary = {
   profile: { email: string | null; display_name: string | null; credits_balance: number; status: string } | null;
@@ -54,6 +55,41 @@ type Asset = {
   content: { script: string | null };
 };
 
+const capabilityIcons: Record<WorkflowCapability | "default", typeof SparklesIcon> = {
+  drama: ClapperboardIcon,
+  video: VideoIcon,
+  image: ImageIcon,
+  content: FileTextIcon,
+  default: FileTextIcon,
+};
+
+const quickActions = [
+  {
+    title: "Create",
+    description: "Open the Workflow Wizard and launch a new AI asset.",
+    href: "/create",
+    icon: SparklesIcon,
+  },
+  {
+    title: "Templates",
+    description: "Browse creator templates and proven content workflows.",
+    href: "/dashboard/templates",
+    icon: Layers3Icon,
+  },
+  {
+    title: "Assets",
+    description: "Review generated text, image, and video outputs.",
+    href: "/assets",
+    icon: FileTextIcon,
+  },
+  {
+    title: "Billing",
+    description: "Check credits, plan, usage, and upgrade options.",
+    href: "/dashboard/billing",
+    icon: CreditCardIcon,
+  },
+];
+
 async function authorizationHeader() {
   const session = await getSupabaseBrowserClient()?.auth.getSession();
   return { Authorization: `Bearer ${session?.data.session?.access_token ?? ""}` };
@@ -79,39 +115,12 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
   return "outline";
 }
 
-function typeIcon(type?: string | null) {
+function iconForType(type?: string | null) {
   if (type?.includes("image")) return ImageIcon;
   if (type?.includes("video")) return VideoIcon;
   if (type === "drama") return ClapperboardIcon;
   return FileTextIcon;
 }
-
-const quickActions = [
-  {
-    title: "Create Center",
-    description: "Start a short drama, image, video, or content task from one product entry.",
-    href: "/create",
-    icon: SparklesIcon,
-  },
-  {
-    title: "Templates",
-    description: "Explore production templates for short drama, marketing, image, and video workflows.",
-    href: "/dashboard/templates",
-    icon: Layers3Icon,
-  },
-  {
-    title: "My Assets",
-    description: "Review generated text, image, and video results from your AI production pipeline.",
-    href: "/assets",
-    icon: FileTextIcon,
-  },
-  {
-    title: "Billing",
-    description: "Check credits, usage, subscription status, and upgrade path.",
-    href: "/dashboard/billing",
-    icon: CreditCardIcon,
-  },
-];
 
 export default function DashboardHomePage() {
   const [summary, setSummary] = useState<BillingSummary | null>(null);
@@ -135,15 +144,15 @@ export default function DashboardHomePage() {
 
       if (tasksResponse.ok) {
         const payload = await tasksResponse.json() as { tasks?: Task[] };
-        setTasks((payload.tasks ?? []).slice(0, 5));
+        setTasks((payload.tasks ?? []).slice(0, 6));
       }
       if (assetsResponse.ok) {
         const payload = await assetsResponse.json() as { assets?: Asset[] };
-        setAssets((payload.assets ?? []).slice(0, 5));
+        setAssets((payload.assets ?? []).slice(0, 6));
       }
       setError("");
     } catch {
-      setError("Sign in with a valid Beta invite to see your dashboard.");
+      setError("Sign in with a valid Beta invite to see your creator workspace.");
     } finally {
       setLoading(false);
     }
@@ -161,62 +170,84 @@ export default function DashboardHomePage() {
 
   const planName = summary?.subscription?.plans?.name ?? "Free workspace";
   const credits = summary?.credits.balance ?? summary?.profile?.credits_balance ?? 0;
+  const currentProject = tasks[0]?.title ?? tasks[0]?.topic ?? "Start your first AI workflow";
   const completedTasks = tasks.filter((task) => task.status === "completed").length;
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.18),transparent_36%),radial-gradient(circle_at_80%_20%,rgba(14,165,233,0.14),transparent_32%),linear-gradient(180deg,#050713_0%,#0b1020_42%,#f8fafc_42%,#f8fafc_100%)]">
-      <TrackPageView surface="dashboard" properties={{ page: "dashboard_home" }} />
-      <TrackPageView eventName="return_visit" surface="dashboard" properties={{ page: "dashboard_home" }} />
+    <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.22),transparent_34%),radial-gradient(circle_at_80%_12%,rgba(14,165,233,0.16),transparent_30%),linear-gradient(180deg,#050713_0%,#0b1020_48%,#f8fafc_48%,#f8fafc_100%)]">
+      <TrackPageView surface="dashboard" properties={{ page: "creator_dashboard" }} />
+      <TrackPageView eventName="return_visit" surface="dashboard" properties={{ page: "creator_dashboard" }} />
 
-      <section className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-8 text-white lg:px-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+      <section className="mx-auto grid max-w-7xl gap-8 px-6 py-8 text-white lg:grid-cols-[1.08fr_.92fr] lg:px-8">
+        <header className="flex min-h-[32rem] flex-col justify-between rounded-[2rem] border border-white/10 bg-white/[0.07] p-6 shadow-2xl shadow-black/25 backdrop-blur-xl md:p-8">
           <div>
             <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/15" variant="outline">
-              Automation Factory
+              AI Creator Workspace
             </Badge>
-            <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight md:text-5xl">
-              Welcome back, {displayName}
+            <h1 className="mt-5 max-w-4xl text-4xl font-semibold tracking-tight md:text-6xl">
+              Welcome back, {displayName}. What are we creating today?
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/68 md:text-base">
-              Your AI SaaS workspace is ready: create new assets, monitor running tasks, and reuse completed results from one cockpit.
+            <p className="mt-5 max-w-2xl text-sm leading-6 text-white/68 md:text-base">
+              Choose a workflow, write one focused brief, and watch Automation Factory turn it into a task, pipeline, and reusable asset.
             </p>
-          </div>
-          <Button className="bg-white text-slate-950 hover:bg-white/90" render={<Link href="/create" />} size="lg">
-            Create new asset
-            <ArrowRightIcon data-icon="inline-end" />
-          </Button>
-        </header>
-
-        <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-3xl border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
-            <p className="text-sm text-white/60">Credits balance</p>
-            <div className="mt-4 flex items-end justify-between">
-              <p className="text-4xl font-semibold">{loading ? "-" : credits}</p>
-              {loading ? <Loader2Icon className="size-5 animate-spin text-white/60" /> : <WalletCardsIcon className="size-7 text-cyan-200" />}
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Button className="bg-white text-slate-950 hover:bg-white/90" render={<Link href="/create" />} size="lg">
+                Start creating
+                <SparklesIcon data-icon="inline-end" />
+              </Button>
+              <Button className="border-white/20 text-white hover:bg-white/10" render={<Link href="/assets" />} size="lg" variant="outline">
+                View recent works
+              </Button>
             </div>
           </div>
-          <div className="rounded-3xl border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
-            <p className="text-sm text-white/60">Current plan</p>
-            <p className="mt-4 text-2xl font-semibold">{loading ? "-" : planName}</p>
-            <p className="mt-2 text-sm text-white/55">{summary?.subscription?.status ?? "No active subscription"}</p>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
-            <p className="text-sm text-white/60">Recent tasks</p>
-            <p className="mt-4 text-2xl font-semibold">{loading ? "-" : tasks.length}</p>
-            <p className="mt-2 text-sm text-white/55">{completedTasks} completed in recent list.</p>
-          </div>
-          <div className="rounded-3xl border border-white/10 bg-white/[0.08] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl">
-            <p className="text-sm text-white/60">Recent usage</p>
-            <p className="mt-4 text-2xl font-semibold">{loading ? "-" : `${summary?.credits.consumed ?? 0} credits`}</p>
-            <p className="mt-2 text-sm text-white/55">Track spend from Billing anytime.</p>
-          </div>
-        </section>
 
-        {error ? (
-          <p className="rounded-2xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm text-amber-50">
-            {error}
-          </p>
-        ) : null}
+          <div className="mt-8 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-sm text-white/55">Credits</p>
+              <div className="mt-3 flex items-end justify-between">
+                <p className="text-3xl font-semibold">{loading ? "-" : credits}</p>
+                {loading ? <Loader2Icon className="size-5 animate-spin text-white/60" /> : <WalletCardsIcon className="size-6 text-cyan-200" />}
+              </div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-sm text-white/55">Current project</p>
+              <p className="mt-3 line-clamp-2 text-lg font-semibold">{currentProject}</p>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+              <p className="text-sm text-white/55">Plan</p>
+              <p className="mt-3 text-lg font-semibold">{loading ? "-" : planName}</p>
+              <p className="mt-1 text-xs text-white/45">{summary?.subscription?.status ?? "No active subscription"}</p>
+            </div>
+          </div>
+        </header>
+
+        <Card className="border-white/10 bg-white/[0.08] text-white shadow-2xl shadow-black/25 backdrop-blur-xl">
+          <CardHeader>
+            <CardTitle>Recommended creator workflows</CardTitle>
+            <CardDescription className="text-white/55">Pick a template to start the wizard with a useful brief.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {workflowTemplates.slice(0, 5).map((template) => {
+              const Icon = capabilityIcons[template.capability];
+              return (
+                <Link className="rounded-2xl border border-white/10 bg-slate-950/45 p-4 transition hover:bg-white/10" href={`/create?template=${template.id}`} key={template.id}>
+                  <div className="flex gap-3">
+                    <span className={`grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${template.accent} text-white`}>
+                      <Icon className="size-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">{template.title}</p>
+                        <Badge className="border-white/15 bg-white/10 text-white" variant="outline">{template.channel}</Badge>
+                      </div>
+                      <p className="mt-1 line-clamp-2 text-sm leading-6 text-white/55">{template.description}</p>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </CardContent>
+        </Card>
       </section>
 
       <section className="mx-auto grid max-w-7xl gap-4 px-6 pb-8 pt-2 lg:grid-cols-4 lg:px-8">
@@ -239,17 +270,22 @@ export default function DashboardHomePage() {
         ))}
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-12 lg:grid-cols-2 lg:px-8">
+      {error ? <p className="mx-auto max-w-7xl px-6 pb-4 text-sm text-destructive lg:px-8">{error}</p> : null}
+
+      <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-12 lg:grid-cols-[1fr_1fr] lg:px-8">
         <Card className="bg-white/95 shadow-xl shadow-slate-950/5">
           <CardHeader>
             <CardTitle>Recent tasks</CardTitle>
-            <CardDescription>Live work moving through the AI production pipeline.</CardDescription>
+            <CardDescription>{completedTasks} completed · {tasks.length} recent workflow runs.</CardDescription>
+            <CardAction>
+              <Button render={<Link href="/create" />} size="sm" variant="outline">New task</Button>
+            </CardAction>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+          <CardContent className="grid gap-3">
             {tasks.map((task) => {
-              const Icon = typeIcon(task.taskType);
+              const Icon = iconForType(task.taskType);
               return (
-                <Link className="rounded-xl border bg-background p-4 transition hover:bg-muted/50" href={`/tasks/${task.id}`} key={task.id}>
+                <Link className="rounded-2xl border bg-background p-4 transition hover:bg-muted/50" href={`/tasks/${task.id}`} key={task.id}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 gap-3">
                       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted">
@@ -265,41 +301,39 @@ export default function DashboardHomePage() {
                 </Link>
               );
             })}
-            {!tasks.length ? <p className="rounded-xl border bg-background p-4 text-sm text-muted-foreground">No tasks yet. Start from the Create Center.</p> : null}
+            {!tasks.length ? <p className="rounded-2xl border bg-background p-5 text-sm text-muted-foreground">No tasks yet. Start with TikTok Ad, 小红书内容, 产品宣传视频, 短剧生成, or YouTube Shorts.</p> : null}
           </CardContent>
         </Card>
 
         <Card className="bg-white/95 shadow-xl shadow-slate-950/5">
           <CardHeader>
-            <CardTitle>Recent assets</CardTitle>
-            <CardDescription>Completed outputs ready to reuse in campaigns and demos.</CardDescription>
+            <CardTitle>Recent works</CardTitle>
+            <CardDescription>Completed assets ready to review, copy, and reuse.</CardDescription>
             <CardAction>
-              <Button render={<Link href="/assets" />} size="sm" variant="outline">
-                View all
-              </Button>
+              <Button render={<Link href="/assets" />} size="sm" variant="outline">View all</Button>
             </CardAction>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
+          <CardContent className="grid gap-3">
             {assets.map((asset) => {
-              const Icon = typeIcon(asset.type);
+              const Icon = iconForType(asset.type);
               return (
-                <Link className="rounded-xl border bg-background p-4 transition hover:bg-muted/50" href={`/dashboard/content/${asset.id}`} key={asset.id}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex min-w-0 gap-3">
-                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted">
-                        <Icon className="size-5" />
-                      </span>
-                      <div className="min-w-0">
+                <Link className="rounded-2xl border bg-background p-4 transition hover:bg-muted/50" href={`/dashboard/content/${asset.id}`} key={asset.id}>
+                  <div className="flex items-start gap-3">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted">
+                      <Icon className="size-5" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-3">
                         <p className="truncate font-medium">{asset.title}</p>
-                        <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">{asset.content.script ?? asset.topic}</p>
+                        <Badge variant="outline">{asset.type}</Badge>
                       </div>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">{asset.content.script ?? asset.topic}</p>
                     </div>
-                    <Badge variant="outline">{asset.type}</Badge>
                   </div>
                 </Link>
               );
             })}
-            {!assets.length ? <p className="rounded-xl border bg-background p-4 text-sm text-muted-foreground">No completed assets yet.</p> : null}
+            {!assets.length ? <p className="rounded-2xl border bg-background p-5 text-sm text-muted-foreground">No completed works yet. Your generated results will appear here.</p> : null}
           </CardContent>
         </Card>
       </section>

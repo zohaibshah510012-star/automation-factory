@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRightIcon,
+  CheckCircle2Icon,
   ClapperboardIcon,
   FileTextIcon,
   ImageIcon,
   Loader2Icon,
+  PlayCircleIcon,
   SparklesIcon,
   VideoIcon,
 } from "lucide-react";
@@ -15,117 +17,111 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { TrackPageView, trackProductEvent } from "@/components/product-event-tracker";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
-import type { TaskType } from "@/lib/prompt-engine";
+import { capabilityLabels, workflowTemplates, type WorkflowCapability, type WorkflowTemplate } from "@/lib/workflow-templates";
 
-type CapabilityId = "drama" | "video" | "image" | "content";
+type WizardStep = 1 | 2 | 3 | 4;
 
-type Capability = {
-  id: CapabilityId;
-  title: string;
-  description: string;
-  placeholder: string;
-  helper: string;
-  button: string;
-  icon: typeof SparklesIcon;
-  accent: string;
+const capabilityIcons: Record<WorkflowCapability, typeof SparklesIcon> = {
+  drama: ClapperboardIcon,
+  video: VideoIcon,
+  image: ImageIcon,
+  content: FileTextIcon,
 };
 
-const capabilities: Capability[] = [
-  {
-    id: "drama",
-    title: "AI Short Drama",
-    description: "Generate a drama concept, story structure, scenes, and production-ready creative assets from one idea.",
-    placeholder: "Example: A founder uses AI agents to rescue a failing content studio in 7 days",
-    helper: "Best for short-video creators, content teams, and campaign storytelling.",
-    button: "Create drama",
-    icon: ClapperboardIcon,
-    accent: "from-fuchsia-500 to-violet-500",
-  },
-  {
-    id: "video",
-    title: "AI Video",
-    description: "Turn a scene prompt into a video generation task using the configured server-side video provider.",
-    placeholder: "Example: Cinematic vertical video of a creator command center, neon lights, fast cuts",
-    helper: "Best for demos, ad scenes, and social video experiments.",
-    button: "Create video",
-    icon: VideoIcon,
-    accent: "from-sky-500 to-cyan-400",
-  },
-  {
-    id: "image",
-    title: "AI Image",
-    description: "Generate posters, thumbnails, visual scenes, and image assets for content production.",
-    placeholder: "Example: Premium SaaS hero image, AI production pipeline, dark cinematic lighting",
-    helper: "Best for covers, storyboards, product visuals, and campaign images.",
-    button: "Create image",
-    icon: ImageIcon,
-    accent: "from-emerald-400 to-teal-500",
-  },
-  {
-    id: "content",
-    title: "AI Content",
-    description: "Create scripts, marketing copy, social posts, and reusable text assets for campaigns.",
-    placeholder: "Example: Write a punchy short-video script for an AI automation product launch",
-    helper: "Best for marketers, operators, and content teams that need fast drafts.",
-    button: "Create content",
-    icon: FileTextIcon,
-    accent: "from-amber-400 to-orange-500",
-  },
-];
+const wizardSteps = [
+  { step: 1, label: "Choose workflow" },
+  { step: 2, label: "Describe need" },
+  { step: 3, label: "Preview pipeline" },
+  { step: 4, label: "Launch task" },
+] as const;
+
+const taskTypes: WorkflowCapability[] = ["drama", "video", "image", "content"];
 
 async function authHeaders() {
   const session = await getSupabaseBrowserClient()?.auth.getSession();
   return { Authorization: `Bearer ${session?.data.session?.access_token ?? ""}` };
 }
 
-function taskTypeFor(capability: CapabilityId): TaskType {
-  if (capability === "drama") return "drama";
-  if (capability === "content") return "marketing";
-  if (capability === "image") return "image";
-  return "video";
+function endpointFor(capability: WorkflowCapability) {
+  if (capability === "image") return "/api/images";
+  if (capability === "video") return "/api/videos";
+  return "/api/tasks";
+}
+
+function payloadFor(template: WorkflowTemplate, requirement: string, brief: string) {
+  const prompt = requirement.trim();
+  if (template.capability === "image" || template.capability === "video") return { prompt: `${prompt}\n\n${brief.trim()}`.trim() };
+  return {
+    topic: prompt,
+    brief: brief.trim() || template.briefStarter,
+    taskType: template.taskType,
+  };
 }
 
 export default function CreateCenterPage() {
-  const [selected, setSelected] = useState<CapabilityId>("drama");
-  const [inputs, setInputs] = useState<Record<CapabilityId, string>>({
-    drama: "",
-    video: "",
-    image: "",
-    content: "",
-  });
+  const [selectedTemplateId, setSelectedTemplateId] = useState<WorkflowTemplate["id"]>("short_drama");
+  const [step, setStep] = useState<WizardStep>(1);
+  const [requirement, setRequirement] = useState("");
   const [brief, setBrief] = useState("");
-  const [loading, setLoading] = useState<CapabilityId | null>(null);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  async function create(capability: Capability) {
-    const prompt = inputs[capability.id].trim();
-    if (!prompt) return;
+  const selectedTemplate = useMemo(
+    () => workflowTemplates.find((template) => template.id === selectedTemplateId) ?? workflowTemplates[0],
+    [selectedTemplateId],
+  );
+  const Icon = capabilityIcons[selectedTemplate.capability];
+  const canContinue = step === 1 || requirement.trim().length > 3;
 
-    setLoading(capability.id);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const templateId = params.get("template");
+    const template = workflowTemplates.find((item) => item.id === templateId);
+    if (template) {
+      setSelectedTemplateId(template.id);
+      setRequirement(template.promptStarter);
+      setBrief(template.briefStarter);
+    }
+  }, []);
+
+  function selectTemplate(template: WorkflowTemplate) {
+    setSelectedTemplateId(template.id);
+    setRequirement(template.promptStarter);
+    setBrief(template.briefStarter);
     setMessage("");
-    await trackProductEvent("template_select", { capability: capability.id, title: capability.title }, "create");
+    void trackProductEvent("template_select", { template: template.id, title: template.title }, "create");
+  }
 
-    const headers = { ...(await authHeaders()), "Content-Type": "application/json" };
-    const body = capability.id === "image"
-      ? { prompt }
-      : capability.id === "video"
-        ? { prompt }
-        : { topic: prompt, brief: brief.trim() || capability.helper, taskType: taskTypeFor(capability.id) };
-    const endpoint = capability.id === "image" ? "/api/images" : capability.id === "video" ? "/api/videos" : "/api/tasks";
-    const response = await fetch(endpoint, {
+  function selectCapability(capability: WorkflowCapability) {
+    const template = workflowTemplates.find((item) => item.capability === capability) ?? workflowTemplates[0];
+    selectTemplate(template);
+  }
+
+  function nextStep() {
+    if (step === 1) setStep(2);
+    else if (step === 2 && canContinue) setStep(3);
+    else if (step === 3) void createTask();
+  }
+
+  async function createTask() {
+    if (!requirement.trim()) return;
+    setStep(4);
+    setLoading(true);
+    setMessage("");
+
+    const response = await fetch(endpointFor(selectedTemplate.capability), {
       method: "POST",
-      headers,
-      body: JSON.stringify(body),
+      headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+      body: JSON.stringify(payloadFor(selectedTemplate, requirement, brief)),
     });
-    setLoading(null);
 
     const payload = (await response.json().catch(() => ({}))) as { task?: { id?: string }; error?: string };
     if (!response.ok || !payload.task?.id) {
-      setMessage(payload.error ?? "Unable to create task. Please check your account and provider configuration.");
+      setLoading(false);
+      setMessage(payload.error ?? "Unable to create task. Check login, credits, or provider configuration.");
       return;
     }
 
@@ -133,76 +129,180 @@ export default function CreateCenterPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.18),transparent_35%),linear-gradient(180deg,#050713_0%,#0b1020_38%,#f8fafc_38%,#f8fafc_100%)]">
-      <TrackPageView surface="create" properties={{ page: "create_center" }} />
-      <section className="mx-auto flex max-w-7xl flex-col gap-8 px-6 py-8 text-white lg:px-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(124,58,237,0.22),transparent_34%),radial-gradient(circle_at_78%_10%,rgba(14,165,233,0.16),transparent_30%),linear-gradient(180deg,#050713_0%,#0b1020_44%,#f8fafc_44%,#f8fafc_100%)]">
+      <TrackPageView surface="create" properties={{ page: "workflow_wizard", template: selectedTemplate.id, step }} />
+      <section className="mx-auto grid max-w-7xl gap-8 px-6 py-8 text-white lg:grid-cols-[.9fr_1.1fr] lg:px-8">
+        <header className="flex flex-col justify-between gap-8">
           <div>
             <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/15" variant="outline">
-              Create Center
+              Workflow Wizard
             </Badge>
-            <h1 className="mt-4 max-w-4xl text-4xl font-semibold tracking-tight md:text-6xl">
-              Create AI content assets from one focused brief.
+            <h1 className="mt-5 text-4xl font-semibold tracking-tight md:text-6xl">
+              Start with a template. Let AI build the workflow.
             </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-white/68 md:text-base">
-              Choose a production capability, describe the result you want, and Automation Factory will route it through the existing AI task pipeline.
+            <p className="mt-5 max-w-xl text-sm leading-6 text-white/68 md:text-base">
+              Choose a creator workflow, describe what you want, preview the AI pipeline, then launch the existing Automation Factory task engine.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button className="bg-white text-slate-950 hover:bg-white/90" render={<Link href="/dashboard" />}>
               Dashboard
-              <ArrowRightIcon data-icon="inline-end" />
             </Button>
             <Button className="border-white/20 text-white hover:bg-white/10" render={<Link href="/assets" />} variant="outline">
               My assets
             </Button>
           </div>
         </header>
+
+        <Card className="border-white/10 bg-white/[0.08] text-white shadow-2xl shadow-black/25 backdrop-blur-xl">
+          <CardContent className="p-5">
+            <div className="grid gap-3 sm:grid-cols-4">
+              {wizardSteps.map((item) => {
+                const active = item.step === step;
+                const done = item.step < step;
+                return (
+                  <div className={`rounded-2xl border p-3 ${active ? "border-white/50 bg-white/15" : "border-white/10 bg-white/5"}`} key={item.step}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-white/55">Step {item.step}</span>
+                      {done ? <CheckCircle2Icon className="size-4 text-emerald-300" /> : null}
+                    </div>
+                    <p className="mt-2 text-sm font-medium">{item.label}</p>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="mt-6 rounded-3xl border border-white/10 bg-slate-950/55 p-5">
+              <div className={`grid size-14 place-items-center rounded-2xl bg-gradient-to-br ${selectedTemplate.accent} text-white shadow-lg`}>
+                <Icon className="size-6" />
+              </div>
+              <p className="mt-4 text-2xl font-semibold">{selectedTemplate.title}</p>
+              <p className="mt-2 text-sm leading-6 text-white/60">{selectedTemplate.description}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {selectedTemplate.outcome.map((item) => <Badge className="border-white/15 bg-white/10 text-white" key={item} variant="outline">{item}</Badge>)}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-5 px-6 pb-12 lg:grid-cols-2 lg:px-8">
-        {capabilities.map((capability) => {
-          const active = selected === capability.id;
-          return (
-            <Card className={`overflow-hidden border-slate-200/80 bg-white/95 shadow-xl shadow-slate-950/5 transition ${active ? "ring-2 ring-violet-500" : ""}`} key={capability.id}>
-              <CardHeader>
-                <div className={`grid size-12 place-items-center rounded-2xl bg-gradient-to-br ${capability.accent} text-white shadow-lg`}>
-                  <capability.icon className="size-5" />
-                </div>
-                <CardTitle>{capability.title}</CardTitle>
-                <CardDescription>{capability.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col gap-4">
+      <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-12 lg:grid-cols-[.95fr_1.05fr] lg:px-8">
+        <Card className="bg-white/95 shadow-xl shadow-slate-950/5">
+          <CardHeader>
+            <CardTitle>Step 1 · Choose a workflow template</CardTitle>
+            <CardDescription>Templates make the first user journey obvious: pick a business goal, then launch.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            <div className="grid gap-2 sm:grid-cols-4">
+              {taskTypes.map((capability) => {
+                const TypeIcon = capabilityIcons[capability];
+                const active = selectedTemplate.capability === capability;
+                return (
+                  <button
+                    className={`rounded-2xl border p-3 text-left transition hover:bg-muted/60 ${active ? "border-slate-950 bg-slate-950 text-white" : "bg-background"}`}
+                    key={capability}
+                    onClick={() => selectCapability(capability)}
+                    type="button"
+                  >
+                    <TypeIcon className="size-5" />
+                    <p className="mt-3 text-sm font-medium">{capabilityLabels[capability].title}</p>
+                    <p className={`mt-1 text-xs leading-5 ${active ? "text-white/60" : "text-muted-foreground"}`}>
+                      {capabilityLabels[capability].description}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+            {workflowTemplates.map((template) => {
+              const TemplateIcon = capabilityIcons[template.capability];
+              const active = template.id === selectedTemplate.id;
+              return (
                 <button
-                  className="rounded-xl border bg-muted/40 p-3 text-left text-sm text-muted-foreground transition hover:bg-muted"
-                  onClick={() => setSelected(capability.id)}
+                  className={`rounded-2xl border p-4 text-left transition hover:bg-muted/60 ${active ? "border-violet-300 bg-violet-50 shadow-lg shadow-violet-500/10" : "bg-background"}`}
+                  key={template.id}
+                  onClick={() => selectTemplate(template)}
                   type="button"
                 >
-                  {capability.helper}
+                  <div className="flex items-start gap-3">
+                    <span className={`grid size-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${template.accent} text-white`}>
+                      <TemplateIcon className="size-5" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="font-medium">{template.title}</p>
+                        <Badge variant="outline">{template.channel}</Badge>
+                      </div>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">{template.description}</p>
+                    </div>
+                  </div>
                 </button>
-                <Textarea
-                  className="min-h-28"
-                  onChange={(event) => setInputs((current) => ({ ...current, [capability.id]: event.target.value }))}
-                  placeholder={capability.placeholder}
-                  value={inputs[capability.id]}
-                />
-                {(capability.id === "drama" || capability.id === "content") ? (
-                  <Input
-                    onChange={(event) => setBrief(event.target.value)}
-                    placeholder="Optional style / audience / channel notes"
-                    value={brief}
-                  />
-                ) : null}
-                <Button disabled={loading === capability.id || !inputs[capability.id].trim()} onClick={() => void create(capability)}>
-                  {loading === capability.id ? <Loader2Icon className="animate-spin" data-icon="inline-start" /> : <SparklesIcon data-icon="inline-start" />}
-                  {capability.button}
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col gap-6">
+          <Card className="bg-white/95 shadow-xl shadow-slate-950/5">
+            <CardHeader>
+              <CardTitle>Step 2 · Input your creative need</CardTitle>
+              <CardDescription>{capabilityLabels[selectedTemplate.capability].description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <Textarea
+                className="min-h-36 text-base"
+                onChange={(event) => setRequirement(event.target.value)}
+                placeholder={selectedTemplate.promptStarter}
+                value={requirement}
+              />
+              <Textarea
+                className="min-h-24"
+                onChange={(event) => setBrief(event.target.value)}
+                placeholder={selectedTemplate.briefStarter}
+                value={brief}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button disabled={!canContinue || loading} onClick={nextStep}>
+                  {step < 3 ? "Continue" : "Launch AI workflow"}
+                  <ArrowRightIcon data-icon="inline-end" />
                 </Button>
+                <Button onClick={() => setStep(1)} variant="outline">Back to templates</Button>
+              </div>
+              {message ? <p className="text-sm text-destructive">{message}</p> : null}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/95 shadow-xl shadow-slate-950/5">
+            <CardHeader>
+              <CardTitle>Step 3 · AI Pipeline preview</CardTitle>
+              <CardDescription>This preview mirrors the task execution page after launch.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-3">
+              {[
+                ["1", "Understand brief", "Parse template, channel, audience, and desired output."],
+                ["2", "Generate assets", "Route to text, image, video, or drama workflow."],
+                ["3", "Save result", "Store task status and completed output for review."],
+              ].map(([number, title, description]) => (
+                <div className="rounded-2xl border bg-background p-4" key={number}>
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="secondary">Step {number}</Badge>
+                    {step >= 3 ? <PlayCircleIcon className="size-4 text-violet-600" /> : null}
+                  </div>
+                  <p className="mt-3 font-medium">{title}</p>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">{description}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {step === 4 ? (
+            <Card className="border-violet-200 bg-violet-50 shadow-xl shadow-violet-500/10">
+              <CardContent className="flex items-center gap-3 p-5">
+                {loading ? <Loader2Icon className="size-5 animate-spin text-violet-600" /> : <SparklesIcon className="size-5 text-violet-600" />}
+                <p className="text-sm text-violet-950">Launching workflow and opening task detail...</p>
               </CardContent>
             </Card>
-          );
-        })}
+          ) : null}
+        </div>
       </section>
-      {message ? <p className="mx-auto max-w-7xl px-6 pb-8 text-sm text-destructive lg:px-8">{message}</p> : null}
     </main>
   );
 }
