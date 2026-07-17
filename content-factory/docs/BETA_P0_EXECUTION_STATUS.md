@@ -18,6 +18,43 @@ Source note: `docs/BETA_P0_EXECUTION_CHECKLIST.md` was requested as input but is
 
 Backup/PITR closure runbook: `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md`.
 
+## Latest Backup/PITR CLI verification
+
+Checked at: `2026-07-17 19:55:22 +08:00`
+
+Commands executed:
+
+```bash
+SUPABASE_NO_TELEMETRY=1 supabase projects list -o json
+SUPABASE_NO_TELEMETRY=1 supabase migration list
+SUPABASE_NO_TELEMETRY=1 supabase backups list --project-ref rfghzowaeqojvnxiqznc -o json
+SUPABASE_NO_TELEMETRY=1 supabase backups list -o json
+```
+
+Evidence:
+
+- Linked production project ref: `rfghzowaeqojvnxiqznc`
+- Project name: `zohaibshah510012-star's Project`
+- Database status: `ACTIVE_HEALTHY`
+- Database host: `db.rfghzowaeqojvnxiqznc.supabase.co`
+- Postgres version: `17.6.1.141`
+- Region: `us-east-1`
+- Remote migrations: `0001` through `0032`
+- Backup CLI result: `backups=null`
+- Physical backup data: `{}`
+- PITR: `pitr_enabled=false`
+- WAL-G: `walg_enabled=true`
+
+Gate result:
+
+- Backup READY: **NO**
+- PITR READY: **NO**
+- Restore Verified: **NO**
+
+Reason:
+
+No real backup artifact, PITR enablement, or restore-drill evidence was returned by the CLI. Backup/PITR therefore remains BLOCKED.
+
 ## Auth/Beta Access
 
 Status: **VERIFIED for linked Supabase + local production preview**
@@ -99,6 +136,7 @@ Known from prior production verification records:
 - Production migrations were verified through `0032_founder_revenue_validation.sql`.
 - Required production tables were previously reachable through Supabase service role checks.
 - `supabase backups list --project-ref rfghzowaeqojvnxiqznc -o json` returned `pitr_enabled=false` and `backups=null`.
+- Latest CLI verification on `2026-07-17 19:55:22 +08:00` again returned `pitr_enabled=false`, `backups=null`, and `physical_backup_data={}`.
 - A pre-Beta backup was not created from this workstation.
 - Docker is not installed on this workstation.
 - `pg_dump` is unavailable on this workstation.

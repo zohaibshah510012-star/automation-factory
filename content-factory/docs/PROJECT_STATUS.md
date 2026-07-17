@@ -114,6 +114,16 @@ Latest P0 verification:
 - Backup/PITR Restore: remains blocked. Supabase CLI reports `pitr_enabled=false` and `backups=null`; Docker, `pg_dump`, and `DATABASE_URL` are unavailable on this workstation. Evidence and restore plan are recorded in `docs/BACKUP_PITR_VERIFICATION.md`.
 - Supabase Backup Closure Runbook is prepared in `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md`; it must be executed by a Supabase project owner/operator before the Backup Ready and Restore Verified gates can be checked.
 
+Latest Supabase Backup/PITR closure attempt:
+
+- Checked at `2026-07-17 19:55:22 +08:00`.
+- Supabase CLI could read project and backup status.
+- Linked production project `rfghzowaeqojvnxiqznc` is `ACTIVE_HEALTHY`.
+- Remote migrations remain aligned from `0001` through `0032`.
+- Backup status remains not ready: `backups=null` and `physical_backup_data={}`.
+- PITR status remains not ready: `pitr_enabled=false`.
+- No restore drill evidence exists.
+
 Closed Beta gate:
 
 - [x] Auth Ready
