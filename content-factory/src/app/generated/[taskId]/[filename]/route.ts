@@ -17,11 +17,8 @@ function safeSegment(value: string) {
   return /^[a-zA-Z0-9._-]+$/.test(value);
 }
 
-function candidatePaths(taskId: string, filename: string) {
-  return [
-    path.join(/*turbopackIgnore: true*/ process.cwd(), "public", "generated", taskId, filename),
-    path.join(/*turbopackIgnore: true*/ process.cwd(), ".next", "standalone", "public", "generated", taskId, filename),
-  ];
+function generatedAssetPath(taskId: string, filename: string) {
+  return path.join(process.cwd(), "public", "generated", taskId, filename);
 }
 
 export async function GET(_request: Request, { params }: { params: Promise<{ taskId: string; filename: string }> }) {
@@ -30,19 +27,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tas
     return NextResponse.json({ error: "Invalid generated asset path" }, { status: 400 });
   }
 
-  for (const candidate of candidatePaths(taskId, filename)) {
-    try {
-      const body = await readFile(candidate);
-      return new NextResponse(body, {
-        headers: {
-          "Cache-Control": "public, max-age=31536000, immutable",
-          "Content-Type": contentTypes[path.extname(filename).toLowerCase()] ?? "application/octet-stream",
-        },
-      });
-    } catch {
-      // Try the next runtime layout.
-    }
+  try {
+    const body = await readFile(generatedAssetPath(taskId, filename));
+    return new NextResponse(body, {
+      headers: {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Type": contentTypes[path.extname(filename).toLowerCase()] ?? "application/octet-stream",
+      },
+    });
+  } catch {
+    return NextResponse.json({ error: "Generated asset not found" }, { status: 404 });
   }
-
-  return NextResponse.json({ error: "Generated asset not found" }, { status: 404 });
 }

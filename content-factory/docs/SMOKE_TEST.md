@@ -100,7 +100,7 @@ Use this checklist after production deployment and before inviting real users.
 ### 6. Checklist
 
 - [ ] Open `/admin/checklist`.
-- [ ] Confirm migration check references `0028_beta_validation_readiness.sql`.
+- [ ] Confirm migration check references `0029_beta_operations.sql`.
 - [ ] Confirm Security is READY.
 - [ ] Confirm Backup is READY or explicitly accepted as WARNING.
 

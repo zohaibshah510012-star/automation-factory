@@ -17,34 +17,53 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type LifecycleStatus = "NEW" | "ACTIVATED" | "ENGAGED" | "POWER_USER" | "AT_RISK";
+type BetaOperationalStatus = "invited" | "active" | "completed" | "churned";
 
 type BetaUser = {
   id: string;
   email: string | null;
   registeredAt: string;
+  firstGenerationAt: string | null;
+  timeToFirstValueMinutes: number | null;
   inviteSource: string;
   latestActivity: string | null;
+  betaStatus: BetaOperationalStatus;
+  betaStatusNote: string | null;
+  betaStatusUpdatedAt: string | null;
   currentPlan: string;
   subscriptionStatus: string;
   lifecycleStatus: LifecycleStatus;
   betaHealthScore: number;
   generationCount: number;
   completedGenerations: number;
+  workflowsUsed: string[];
   creditsConsumed: number;
   returnVisits: number;
   feedbackCount: number;
   upgradeIntent: number;
+  activationChecklist: {
+    signupCompleted: boolean;
+    workspaceCreated: boolean;
+    firstGenerationStarted: boolean;
+    firstGenerationCompleted: boolean;
+    feedbackSubmitted: boolean;
+  };
 };
 
 type BetaInsights = {
   users: BetaUser[];
   activation: {
     registeredUsers: number;
+    signupCompletedUsers: number;
+    workspaceCreatedUsers: number;
+    firstGenerationStartedUsers: number;
     firstGenerationCompletedUsers: number;
+    feedbackSubmittedUsers: number;
     firstGenerationCompletionRate: number;
     averageFirstGenerationTimeMinutes: number;
   };
@@ -70,6 +89,15 @@ type BetaInsights = {
     likelyToPay: BetaUser[];
     atRisk: BetaUser[];
   };
+  feedbackIntelligence: {
+    total: number;
+    averageSatisfaction: number;
+    averageResultQuality: number;
+    recommendationRate: number;
+    categories: Array<{ category: string; count: number }>;
+    commonIssues: Array<{ issue: string; count: number }>;
+    openCount: number;
+  };
   generatedAt: string;
 };
 
@@ -86,6 +114,13 @@ function lifecycleVariant(status: LifecycleStatus): "default" | "secondary" | "d
   if (status === "POWER_USER") return "default";
   if (status === "ENGAGED" || status === "ACTIVATED") return "secondary";
   if (status === "AT_RISK") return "destructive";
+  return "outline";
+}
+
+function betaStatusVariant(status: BetaOperationalStatus): "default" | "secondary" | "destructive" | "outline" {
+  if (status === "completed") return "default";
+  if (status === "active") return "secondary";
+  if (status === "churned") return "destructive";
   return "outline";
 }
 
@@ -125,6 +160,7 @@ function UserSignalList({ users, empty, signal }: { users: BetaUser[]; empty: st
 export default function BetaInsightsPage() {
   const [data, setData] = useState<BetaInsights | null>(null);
   const [message, setMessage] = useState("");
+  const [statusNote, setStatusNote] = useState("");
 
   async function load() {
     const response = await fetch("/api/admin/beta-insights", { headers: await authHeaders(), cache: "no-store" });
@@ -135,6 +171,17 @@ export default function BetaInsightsPage() {
     }
     setData(await response.json());
     setMessage("");
+  }
+
+  async function updateBetaStatus(userId: string, status: BetaOperationalStatus) {
+    const response = await fetch("/api/admin/beta-insights", {
+      method: "PATCH",
+      headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, status, note: statusNote }),
+    });
+    setMessage(response.ok ? "Beta user status updated." : "Unable to update Beta user status.");
+    if (response.ok) setStatusNote("");
+    await load();
   }
 
   useEffect(() => {
@@ -221,6 +268,75 @@ export default function BetaInsightsPage() {
         ))}
       </section>
 
+      <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Activation funnel</CardTitle>
+            <CardDescription>Core Beta activation milestones from signup to feedback.</CardDescription>
+            <CardAction>
+              <TargetIcon />
+            </CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-3 sm:grid-cols-2">
+            {[
+              ["Signup completed", data?.activation.signupCompletedUsers ?? 0],
+              ["Workspace created", data?.activation.workspaceCreatedUsers ?? 0],
+              ["First generation started", data?.activation.firstGenerationStartedUsers ?? 0],
+              ["First generation completed", data?.activation.firstGenerationCompletedUsers ?? 0],
+              ["Feedback submitted", data?.activation.feedbackSubmittedUsers ?? 0],
+            ].map(([label, value]) => (
+              <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/60 px-3 py-2" key={label}>
+                <span className="text-sm text-muted-foreground">{label}</span>
+                <span className="text-sm font-semibold">{value}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Feedback intelligence</CardTitle>
+            <CardDescription>Quality, speed, usability, use case, and payment-intent signals.</CardDescription>
+            <CardAction>
+              <HeartPulseIcon />
+            </CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+            <div className="grid gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-lg border bg-background/60 p-3">
+                  <p className="text-xs text-muted-foreground">Avg score</p>
+                  <p className="text-2xl font-semibold">{data?.feedbackIntelligence.averageSatisfaction ?? 0}/5</p>
+                </div>
+                <div className="rounded-lg border bg-background/60 p-3">
+                  <p className="text-xs text-muted-foreground">Recommend rate</p>
+                  <p className="text-2xl font-semibold">{data?.feedbackIntelligence.recommendationRate ?? 0}%</p>
+                </div>
+              </div>
+              {(data?.feedbackIntelligence.categories ?? []).map((item) => (
+                <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/60 px-3 py-2" key={item.category}>
+                  <span className="text-sm text-muted-foreground">{item.category}</span>
+                  <span className="text-sm font-semibold">{item.count}</span>
+                </div>
+              ))}
+            </div>
+            <div className="grid gap-3">
+              <div className="rounded-lg border bg-background/60 p-3">
+                <p className="text-xs text-muted-foreground">Avg result quality</p>
+                <p className="text-2xl font-semibold">{data?.feedbackIntelligence.averageResultQuality ?? 0}/5</p>
+                <p className="mt-1 text-xs text-muted-foreground">{data?.feedbackIntelligence.openCount ?? 0} open feedback items</p>
+              </div>
+              {(data?.feedbackIntelligence.commonIssues ?? []).map((item) => (
+                <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/60 px-3 py-2" key={item.issue}>
+                  <span className="text-sm text-muted-foreground">{item.issue}</span>
+                  <span className="text-sm font-semibold">{item.count}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </section>
+
       <section className="grid gap-6 lg:grid-cols-[1fr_1fr_1fr]">
         <Card>
           <CardHeader>
@@ -299,13 +415,25 @@ export default function BetaInsightsPage() {
             <CardDescription>Email, invite source, recent activity, plan, and usage signals.</CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="mb-4 grid gap-2 md:grid-cols-[1fr_auto]">
+              <Input
+                onChange={(event) => setStatusNote(event.target.value)}
+                placeholder="Optional status note, e.g. scheduled interview / needs help with video"
+                value={statusNote}
+              />
+              <p className="self-center text-xs text-muted-foreground">Applied to the next status change.</p>
+            </div>
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Email</TableHead>
+                  <TableHead>Beta status</TableHead>
                   <TableHead>Registered</TableHead>
+                  <TableHead>First generation</TableHead>
+                  <TableHead>TTFV</TableHead>
                   <TableHead>Invite source</TableHead>
                   <TableHead>Recent activity</TableHead>
+                  <TableHead>Workflows</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Lifecycle</TableHead>
                   <TableHead>Health</TableHead>
@@ -320,9 +448,34 @@ export default function BetaInsightsPage() {
                 {data?.users.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell className="max-w-56 truncate">{user.email ?? "-"}</TableCell>
+                    <TableCell>
+                      <div className="flex min-w-36 flex-col gap-2">
+                        <Badge className="w-fit" variant={betaStatusVariant(user.betaStatus)}>{user.betaStatus}</Badge>
+                        <select
+                          className="h-8 rounded-lg border bg-background px-2 text-xs"
+                          onChange={(event) => void updateBetaStatus(user.id, event.target.value as BetaOperationalStatus)}
+                          value={user.betaStatus}
+                        >
+                          <option value="invited">invited</option>
+                          <option value="active">active</option>
+                          <option value="completed">completed</option>
+                          <option value="churned">churned</option>
+                        </select>
+                        {user.betaStatusNote ? <span className="max-w-44 truncate text-xs text-muted-foreground">{user.betaStatusNote}</span> : null}
+                      </div>
+                    </TableCell>
                     <TableCell>{formatDate(user.registeredAt)}</TableCell>
+                    <TableCell>{formatDate(user.firstGenerationAt)}</TableCell>
+                    <TableCell>{user.timeToFirstValueMinutes === null ? "-" : `${user.timeToFirstValueMinutes}m`}</TableCell>
                     <TableCell className="max-w-48 truncate">{user.inviteSource}</TableCell>
                     <TableCell>{formatDate(user.latestActivity)}</TableCell>
+                    <TableCell className="max-w-56">
+                      <div className="flex flex-wrap gap-1">
+                        {user.workflowsUsed.length ? user.workflowsUsed.map((workflow) => (
+                          <Badge key={workflow} variant="outline">{workflow}</Badge>
+                        )) : "-"}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1">
                         <span>{user.currentPlan}</span>
@@ -344,7 +497,7 @@ export default function BetaInsightsPage() {
                 ))}
                 {!data?.users.length ? (
                   <TableRow>
-                    <TableCell className="text-muted-foreground" colSpan={12}>No Beta users yet.</TableCell>
+                    <TableCell className="text-muted-foreground" colSpan={16}>No Beta users yet.</TableCell>
                   </TableRow>
                 ) : null}
               </TableBody>

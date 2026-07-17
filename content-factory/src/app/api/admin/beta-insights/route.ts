@@ -48,10 +48,22 @@ type FeedbackRow = {
   user_id: string | null;
   category: string;
   satisfaction: number;
+  result_quality: number | null;
+  use_case: string | null;
+  continue_use: boolean | null;
   status: string;
   content_feedback: string | null;
   suggestion: string | null;
   created_at: string;
+};
+
+type BetaStatus = "invited" | "active" | "completed" | "churned";
+
+type BetaStatusRow = {
+  user_id: string;
+  status: BetaStatus;
+  note: string | null;
+  updated_at: string;
 };
 
 type SubscriptionRow = {
@@ -85,7 +97,39 @@ function taskBucket(taskType?: string | null) {
 
 function hasUpgradeIntent(feedback: FeedbackRow) {
   const haystack = `${feedback.category} ${feedback.content_feedback ?? ""} ${feedback.suggestion ?? ""}`.toLowerCase();
-  return /billing|upgrade|price|pricing|plan|credits|付费|升级|套餐|额度/.test(haystack);
+  return /billing|upgrade|price|pricing|plan|credits|pay|paid/.test(haystack);
+}
+
+function feedbackText(feedback: FeedbackRow) {
+  return `${feedback.category} ${feedback.use_case ?? ""} ${feedback.content_feedback ?? ""} ${feedback.suggestion ?? ""}`.toLowerCase();
+}
+
+function classifyFeedback(feedback: FeedbackRow) {
+  const text = feedbackText(feedback);
+  if (hasUpgradeIntent(feedback) || /pay|paid|price|pricing|upgrade|billing|plan/.test(text)) return "Payment intent";
+  if (/slow|speed|timeout|latency|wait/.test(text)) return "Generation speed";
+  if (/confusing|hard|difficult|ux|ui|where|how|bug|error|flow/.test(text)) return "Usability";
+  if (feedback.use_case?.trim() || /case|scenario|workflow|tiktok|short|marketing|drama/.test(text)) return "Use case";
+  return "Content quality";
+}
+
+function commonIssueLabels(feedback: FeedbackRow) {
+  const text = feedbackText(feedback);
+  const labels: string[] = [];
+  if ((feedback.result_quality ?? 5) <= 3 || /quality|bad|wrong|inaccurate/.test(text)) labels.push("Content quality is unstable");
+  if (/slow|timeout|wait/.test(text)) labels.push("Generation speed needs improvement");
+  if (/confusing|hard|where|how|flow/.test(text)) labels.push("First-use path is not clear enough");
+  if (/credit|credits/.test(text)) labels.push("Credits are not easy to understand");
+  if (/video|mp4|preview/.test(text)) labels.push("Video output still needs a real provider");
+  return labels.length ? labels : ["No clear issue"];
+}
+
+function average(values: number[]) {
+  return values.length ? Number((values.reduce((total, value) => total + value, 0) / values.length).toFixed(1)) : 0;
+}
+
+function isBetaStatus(value: unknown): value is BetaStatus {
+  return value === "invited" || value === "active" || value === "completed" || value === "churned";
 }
 
 function clampScore(value: number) {
@@ -115,17 +159,18 @@ export async function GET(request: Request) {
     await requireAdmin(request);
     const supabase = getSupabaseServerClient()!;
 
-    const [profiles, invites, events, tasks, usage, subscriptions, feedback] = await Promise.all([
+    const [profiles, invites, events, tasks, usage, subscriptions, feedback, betaStatuses] = await Promise.all([
       supabase.from("profiles").select("id,email,created_at,credits_balance").order("created_at", { ascending: false }).limit(500),
       supabase.from("beta_invites").select("email,invite_code,status,created_at,used_at").order("created_at", { ascending: false }).limit(500),
       supabase.from("product_events").select("user_id,event_name,surface,path,properties,created_at").order("created_at", { ascending: false }).limit(5000),
       supabase.from("content_tasks").select("id,user_id,task_type,status,credits_charged,created_at,updated_at").order("created_at", { ascending: false }).limit(5000),
       supabase.from("usage_history").select("user_id,capability,credits_charged,created_at").order("created_at", { ascending: false }).limit(5000),
       supabase.from("subscriptions").select("user_id,status,started_at,expires_at,plans(name,price,credits)").order("created_at", { ascending: false }).limit(1000),
-      supabase.from("user_feedback").select("user_id,category,satisfaction,status,content_feedback,suggestion,created_at").order("created_at", { ascending: false }).limit(1000),
+      supabase.from("user_feedback").select("user_id,category,satisfaction,result_quality,use_case,continue_use,status,content_feedback,suggestion,created_at").order("created_at", { ascending: false }).limit(1000),
+      supabase.from("beta_user_statuses").select("user_id,status,note,updated_at").order("updated_at", { ascending: false }).limit(1000),
     ]);
 
-    for (const result of [profiles, invites, events, tasks, usage, subscriptions, feedback]) {
+    for (const result of [profiles, invites, events, tasks, usage, subscriptions, feedback, betaStatuses]) {
       if (result.error) throw result.error;
     }
 
@@ -136,8 +181,10 @@ export async function GET(request: Request) {
     const usageRows = (usage.data ?? []) as UsageRow[];
     const subscriptionRows = (subscriptions.data ?? []) as unknown as SubscriptionRow[];
     const feedbackRows = (feedback.data ?? []) as FeedbackRow[];
+    const statusRows = (betaStatuses.data ?? []) as BetaStatusRow[];
 
     const inviteByEmail = new Map(inviteRows.map((invite) => [invite.email.toLowerCase(), invite]));
+    const betaStatusByUser = new Map(statusRows.map((status) => [status.user_id, status]));
     const signupUserIds = new Set(eventRows.filter((event) => event.event_name === "signup_completed" || event.event_name === "signup_complete").map((event) => event.user_id).filter(Boolean) as string[]);
     const betaProfiles = profileRows.filter((profile) => {
       const email = profile.email?.toLowerCase();
@@ -236,6 +283,7 @@ export async function GET(request: Request) {
       const userUsage = usageByUser.get(profile.id) ?? [];
       const userFeedback = feedbackByUser.get(profile.id) ?? [];
       const invite = profile.email ? inviteByEmail.get(profile.email.toLowerCase()) : undefined;
+      const betaStatus = betaStatusByUser.get(profile.id);
       const subscription = planByUser.get(profile.id);
       const upgradeClicks = userEvents.filter((event) => event.event_name === "upgrade_click").length;
       const upgradeFeedback = userFeedback.filter(hasUpgradeIntent).length;
@@ -253,12 +301,18 @@ export async function GET(request: Request) {
         ...userFeedback.map((row) => row.created_at),
       ]);
       const signupAt = minDate(userEvents.filter((event) => event.event_name === "signup_completed" || event.event_name === "signup_complete")) ?? profile.created_at;
+      const firstGenerationAt = minDate(userEvents.filter((event) => event.event_name === "first_generation_completed" || event.event_name === "task_complete"))
+        ?? minDate(userTasks.filter((task) => task.status === "completed"));
+      const timeToFirstValueMinutes = firstGenerationAt && signupAt && toTime(firstGenerationAt) >= toTime(signupAt)
+        ? Number(((toTime(firstGenerationAt) - toTime(signupAt)) / 60_000).toFixed(1))
+        : null;
       const activityDates = [
         ...userEvents.map((event) => event.created_at),
         ...userTasks.map((task) => task.updated_at ?? task.created_at),
         ...userUsage.map((row) => row.created_at),
         ...userFeedback.map((row) => row.created_at),
       ];
+      const workflowsUsed = Array.from(new Set(userTasks.map((task) => task.task_type ?? "unknown"))).sort();
       const returnedWithinSevenDays = activityDates.some((date) => {
         const delta = toTime(date) - toTime(signupAt);
         return delta > 60_000 && delta <= sevenDaysMs;
@@ -277,8 +331,13 @@ export async function GET(request: Request) {
         id: profile.id,
         email: profile.email,
         registeredAt: profile.created_at,
+        firstGenerationAt,
+        timeToFirstValueMinutes,
         inviteSource: invite ? `${invite.invite_code} (${invite.status})` : "direct/internal",
         latestActivity,
+        betaStatus: betaStatus?.status ?? (invite?.status === "pending" ? "invited" : activated ? "active" : "invited"),
+        betaStatusNote: betaStatus?.note ?? null,
+        betaStatusUpdatedAt: betaStatus?.updated_at ?? null,
         currentPlan: subscription?.plans?.name ?? "Free",
         subscriptionStatus: subscription?.status ?? "none",
         lifecycleStatus,
@@ -293,10 +352,18 @@ export async function GET(request: Request) {
         }),
         generationCount: userTasks.length,
         completedGenerations,
+        workflowsUsed,
         creditsConsumed: userCreditsConsumed,
         returnVisits,
         feedbackCount: userFeedback.length,
         upgradeIntent: upgradeClicks + upgradeFeedback,
+        activationChecklist: {
+          signupCompleted: userEvents.some((event) => event.event_name === "signup_completed" || event.event_name === "signup_complete"),
+          workspaceCreated: userEvents.some((event) => event.event_name === "first_workspace_created"),
+          firstGenerationStarted: userEvents.some((event) => event.event_name === "first_generation_started"),
+          firstGenerationCompleted: activated,
+          feedbackSubmitted: userFeedback.length > 0 || userEvents.some((event) => event.event_name === "feedback_submitted"),
+        },
       };
     });
     const mostActive = [...betaUsers]
@@ -310,11 +377,48 @@ export async function GET(request: Request) {
       .sort((a, b) => a.betaHealthScore - b.betaHealthScore)
       .slice(0, 5);
 
+    const feedbackCategories = betaFeedback.reduce<Record<string, number>>((counts, row) => {
+      const category = classifyFeedback(row);
+      counts[category] = (counts[category] ?? 0) + 1;
+      return counts;
+    }, {});
+    const issueCounts = betaFeedback.flatMap(commonIssueLabels).reduce<Record<string, number>>((counts, label) => {
+      counts[label] = (counts[label] ?? 0) + 1;
+      return counts;
+    }, {});
+    const recommendationDenominator = betaFeedback.filter((row) => row.continue_use !== null).length;
+    const recommendationCount = betaFeedback.filter((row) => row.continue_use === true).length;
+    const feedbackIntelligence = {
+      total: betaFeedback.length,
+      averageSatisfaction: average(betaFeedback.map((row) => Number(row.satisfaction ?? 0)).filter((value) => value > 0)),
+      averageResultQuality: average(betaFeedback.map((row) => Number(row.result_quality ?? 0)).filter((value) => value > 0)),
+      recommendationRate: recommendationDenominator ? Number(((recommendationCount / recommendationDenominator) * 100).toFixed(1)) : 0,
+      categories: ["Content quality", "Generation speed", "Usability", "Use case", "Payment intent"].map((category) => ({
+        category,
+        count: feedbackCategories[category] ?? 0,
+      })),
+      commonIssues: Object.entries(issueCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([issue, count]) => ({ issue, count })),
+      openCount: betaFeedback.filter((row) => row.status === "open").length,
+    };
+    const uniqueUsersForEvents = (...eventNames: string[]) => new Set(
+      betaEvents
+        .filter((event) => eventNames.includes(event.event_name))
+        .map((event) => event.user_id)
+        .filter(Boolean) as string[],
+    ).size;
+
     return NextResponse.json({
       users: betaUsers,
       activation: {
         registeredUsers: betaProfiles.length,
+        signupCompletedUsers: uniqueUsersForEvents("signup_completed", "signup_complete"),
+        workspaceCreatedUsers: uniqueUsersForEvents("first_workspace_created"),
+        firstGenerationStartedUsers: uniqueUsersForEvents("first_generation_started"),
         firstGenerationCompletedUsers: completedFirstGenUsers.size,
+        feedbackSubmittedUsers: Math.max(uniqueUsersForEvents("feedback_submitted"), new Set(betaFeedback.map((row) => row.user_id).filter(Boolean)).size),
         firstGenerationCompletionRate: betaProfiles.length ? Number(((completedFirstGenUsers.size / betaProfiles.length) * 100).toFixed(1)) : 0,
         averageFirstGenerationTimeMinutes: firstGenerationDurations.length
           ? Number((firstGenerationDurations.reduce((total, value) => total + value, 0) / firstGenerationDurations.length / 60_000).toFixed(1))
@@ -348,11 +452,51 @@ export async function GET(request: Request) {
         likelyToPay,
         atRisk,
       },
+      feedbackIntelligence,
       generatedAt: new Date().toISOString(),
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load beta insights";
     console.error("[automation-factory] beta_insights_failed", { message });
     return NextResponse.json({ error: message === "AUTH_REQUIRED" || message === "ADMIN_REQUIRED" ? "Admin access required" : "Unable to load beta insights" }, { status: message === "AUTH_REQUIRED" || message === "ADMIN_REQUIRED" ? 403 : 500 });
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const admin = await requireAdmin(request);
+    const body = await request.json() as { userId?: string; status?: unknown; note?: string | null };
+    if (!body.userId || !isBetaStatus(body.status)) {
+      return NextResponse.json({ error: "Invalid Beta user status update" }, { status: 400 });
+    }
+
+    const supabase = getSupabaseServerClient()!;
+    const patch = {
+      user_id: body.userId,
+      status: body.status,
+      note: body.note?.trim() || null,
+      updated_by: admin.id,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await supabase
+      .from("beta_user_statuses")
+      .upsert(patch, { onConflict: "user_id" })
+      .select()
+      .single();
+    if (error || !data) throw error ?? new Error("Unable to update Beta user status");
+
+    await supabase.from("audit_logs").insert({
+      admin_id: admin.id,
+      action: "beta_user_status_updated",
+      resource_type: "profile",
+      resource_id: body.userId,
+      metadata: { status: body.status, note: patch.note },
+    });
+
+    return NextResponse.json({ status: data }, { headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to update Beta user status";
+    console.error("[automation-factory] beta_user_status_update_failed", { message });
+    return NextResponse.json({ error: message === "AUTH_REQUIRED" || message === "ADMIN_REQUIRED" ? "Admin access required" : "Unable to update Beta user status" }, { status: message === "AUTH_REQUIRED" || message === "ADMIN_REQUIRED" ? 403 : 400 });
   }
 }

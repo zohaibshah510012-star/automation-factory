@@ -2,6 +2,25 @@
 
 ## 2026-07-17
 
+### Beta Operations & User Validation
+
+- Added migration `0029_beta_operations.sql` with admin-only `beta_user_statuses`.
+- Added Beta operational statuses: `invited`, `active`, `completed`, and `churned`.
+- Enhanced `/admin/beta-insights` with per-user registration time, first generation time, Time To First Value, latest activity, workflows used, Credits consumed, feedback status, and manual Beta status updates.
+- Added audit logging for Beta user status changes.
+- Added activation funnel metrics for signup, workspace creation, first generation start, first generation completion, and feedback submission.
+- Added Feedback Intelligence for content quality, generation speed, usability, use cases, payment intent, average rating, recommendation rate, and common issues.
+- Updated production diagnostics and checklists to require migration `0029_beta_operations.sql`.
+- Simplified the generated asset route to the scoped `public/generated` runtime path, removing the Turbopack NFT tracing warning.
+- Applied migration `0029_beta_operations.sql` to the linked Supabase project and confirmed migrations `0001` through `0029`.
+
+### Validation
+
+- `pnpm lint`: passed
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm build`: passed without the previous generated asset route tracing warning.
+- `beta_user_statuses`: reachable on the linked Supabase project.
+
 ### Beta Launch Preparation
 
 - Fixed local fallback cost attribution so usage and cost reporting no longer inherit `deepseek/deepseek-chat` from Agent pricing when the runtime uses local fallback providers.

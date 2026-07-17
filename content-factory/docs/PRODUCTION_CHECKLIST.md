@@ -1,6 +1,6 @@
 # Production Checklist
 
-Baseline: `0001_content_factory.sql` through `0028_beta_validation_readiness.sql`.
+Baseline: `0001_content_factory.sql` through `0029_beta_operations.sql`.
 
 ## Environment
 
@@ -15,8 +15,8 @@ Baseline: `0001_content_factory.sql` through `0028_beta_validation_readiness.sql
 
 ## Database
 
-- [ ] `supabase/migrations` is continuous from `0001` to `0028`
-- [ ] Production Supabase shows all migrations applied through `0028_beta_validation_readiness.sql`
+- [ ] `supabase/migrations` is continuous from `0001` to `0029`
+- [ ] Production Supabase shows all migrations applied through `0029_beta_operations.sql`
 - [ ] RLS is enabled for identity, credits, billing, payment, distribution, short drama, analytics, feedback, and workspace tables
 - [ ] `grant_subscription_credits` is idempotent
 - [ ] `admin_adjust_user_credits` writes `credit_transactions`

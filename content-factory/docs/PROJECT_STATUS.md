@@ -4,13 +4,13 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Beta Validation Sprint - user testing infrastructure and analytics readiness.
+Beta Operations & User Validation - support 3-5 real Beta users and capture activation, usage, feedback, and revenue-readiness data.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
 ## Latest verified commit before this report
 
-`975be1b2d26d8f58b8a9dec055ada2facb94398a`
+`89c64aa10b45589503a2b63cedbac8493d9eb1c3`
 
 ## Verified user path
 
@@ -46,13 +46,13 @@ Important observed data:
 
 ## Supabase migration status
 
-Local migrations currently run from `0001` through `0028`.
+Local migrations currently run from `0001` through `0029`.
 
 Remote Supabase was found at `0026` during E2E. `0027_beta_experiment_tracking.sql` was applied with `supabase db push`.
 
 Remote now reports:
 
-- `0001` through `0028`: applied
+- `0001` through `0029`: applied
 
 This fixed missing `feedback_submitted` product analytics events. Before `0027` was applied, feedback rows were saved but the analytics event was rejected by the older `product_events_event_name_check` constraint.
 
@@ -60,6 +60,8 @@ Latest migration sync:
 
 - `0028_beta_validation_readiness.sql` adds Beta Validation events (`workflow_created`, `first_workflow_created`, `generation_failed`) and richer feedback fields (`result_quality`, `use_case`, `continue_use`).
 - `0028_beta_validation_readiness.sql` has been pushed to the target Supabase project and confirmed with `supabase migration list`.
+- `0029_beta_operations.sql` adds `beta_user_statuses` for manual Beta cohort status tracking (`invited`, `active`, `completed`, `churned`) with admin-only RLS.
+- `0029_beta_operations.sql` has been pushed to the target Supabase project and confirmed with `supabase migration list`.
 
 ## Provider status
 
@@ -143,7 +145,7 @@ Beta Launch Preparation status:
   - Social Media Content: `xiaohongshu_content` and `youtube_shorts`
 - Demo data readiness is covered by Showcase, Studio demo preview, Workflow Templates, local generated image SVGs, local video preview SVGs, and Short Drama sample outputs from the Dry Run.
 - Feedback Loop remains active from user feedback submission into `user_feedback`, product events, Admin Feedback, Admin Analytics, and Beta Insights.
-- Production Safety check found migrations `0001` through `0028` applied on the linked Supabase project, server-only service role usage, no committed `.env.local`, no `NEXT_PUBLIC` service-role key usage, existing rate limits on Beta invite verification and analytics events, and daily generation limits on generation APIs.
+- Production Safety check found migrations `0001` through `0029` applied on the linked Supabase project, server-only service role usage, no committed `.env.local`, no `NEXT_PUBLIC` service-role key usage, existing rate limits on Beta invite verification and analytics events, and daily generation limits on generation APIs.
 
 Latest Beta Launch Preparation smoke:
 
@@ -152,6 +154,16 @@ Latest Beta Launch Preparation smoke:
 - Text task: `4425d7f2-7bc6-4969-85ea-3c9505592765`, `completed`, `usage_history.provider/model = local-text-provider / local-content-pack`, estimated cost `0.25`
 - Image task: `d50490a7-247e-4005-a558-088e111e3a6e`, `completed`, `usage_history.provider/model = local-image-provider / local-svg-image`, estimated cost `0.40`
 - Video task: `da082342-bf53-4364-830c-da88ad513367`, `completed`, `usage_history.provider/model = local-video-provider / local-svg-video-preview`, estimated cost `1.00`
+
+Beta Operations readiness status:
+
+- `/admin/beta-insights` now functions as the Beta Users operating page.
+- Admin can view each Beta user's operational status, registration time, first generation time, recent activity, workflows used, Credits consumed, feedback count, upgrade intent, plan, lifecycle, and Beta Health Score.
+- Admin can manually mark Beta users as `invited`, `active`, `completed`, or `churned`; updates are written to `beta_user_statuses` and audited in `audit_logs`.
+- Activation metrics now include signup completed, workspace created, first generation started, first generation completed, feedback submitted, and average Time To First Value.
+- Feedback Intelligence now groups feedback into content quality, generation speed, usability, use case, and payment-intent signals, with average score, result quality, recommendation rate, open feedback count, and common issue labels.
+- Production diagnostics and checklists now expect `0029_beta_operations.sql`.
+- Generated asset route no longer emits the previous Turbopack NFT tracing warning during `pnpm build`.
 
 Short Drama MVP is now usable as a complete Beta content-production path:
 
@@ -276,4 +288,4 @@ Remaining risks:
 5. Short Drama local fallback creates SVG preview assets for video scenes. This is enough for Beta demo value, but production video quality depends on a real video provider.
 6. Provider readiness dry-run does not prove external provider account quota or generation quality; each real provider still needs one controlled paid smoke test before public Beta promises.
 7. Distribution MVP prepares export packages for manual publishing; real TikTok, YouTube Shorts, and Xiaohongshu publishing still requires platform OAuth, review, quota, and compliance work.
-8. Build currently passes with a Next/Turbopack NFT tracing warning for the generated asset route. It is not blocking Beta, but should be reviewed before production hardening if standalone bundle size grows unexpectedly.
+8. Real Beta user evidence is still pending. The next product risk is not engineering capability but whether 3-5 invited users can complete a first generation and provide actionable feedback without hand-holding.
