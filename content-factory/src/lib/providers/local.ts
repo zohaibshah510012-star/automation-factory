@@ -125,7 +125,7 @@ export function createLocalProviders(): AiProviders {
       async generateImage({ taskId, prompt, model, size, filename }) {
         const selectedModel = model ?? "local-svg-image";
         const url = await saveGeneratedFile(taskId, filename ?? "image.svg", Buffer.from(localSvg(prompt), "utf8"));
-        return { url, provider: "local", model: selectedModel, metadata: { size: size ?? "1024x1024", format: "svg" } };
+        return { url, provider: "local-image-provider", model: selectedModel, metadata: { size: size ?? "1024x1024", format: "svg" } };
       },
       async generateStoryboardImages({ taskId, topic, scenes }) {
         return Promise.all(
@@ -158,7 +158,7 @@ export function createLocalProviders(): AiProviders {
         const videoUrl = await saveGeneratedFile(taskId, "video-preview.svg", Buffer.from(localVideoPreviewSvg(prompt, selectedDuration), "utf8"));
         return {
           status: "completed" as const,
-          provider: "local",
+          provider: "local-video-provider",
           model: selectedModel,
           videoUrl,
           thumbnailUrl: videoUrl,

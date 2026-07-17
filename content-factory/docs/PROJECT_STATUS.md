@@ -10,7 +10,7 @@ The current product direction is to make Automation Factory usable as a first-se
 
 ## Latest verified commit before this report
 
-`4ee8e466a48c74d9427949f50df076a225dd904c`
+`975be1b2d26d8f58b8a9dec055ada2facb94398a`
 
 ## Verified user path
 
@@ -129,6 +129,29 @@ Only `docs/PROJECT_STATUS.md` is being created in this change because it was exp
 ## Current Beta readiness
 
 Beta user path is ready for invited text-generation users, local image workflow users, and local video workflow users.
+
+Beta Launch Preparation status:
+
+- Local fallback cost attribution is now corrected for text, image, and video workflows.
+- Text fallback usage now records `local-text-provider / local-content-pack` instead of inheriting the Agent pricing row.
+- Image fallback usage now records `local-image-provider / local-svg-image`.
+- Video fallback usage now records `local-video-provider / local-svg-video-preview`.
+- `ai_provider_costs` and Admin cost overview now include the local fallback providers as first-class cost groups.
+- Demo Templates are ready for the Beta Launch Pack:
+  - AI Short Drama: `short_drama`
+  - Product Advertisement: `tiktok_ad` and `product_promo_video`
+  - Social Media Content: `xiaohongshu_content` and `youtube_shorts`
+- Demo data readiness is covered by Showcase, Studio demo preview, Workflow Templates, local generated image SVGs, local video preview SVGs, and Short Drama sample outputs from the Dry Run.
+- Feedback Loop remains active from user feedback submission into `user_feedback`, product events, Admin Feedback, Admin Analytics, and Beta Insights.
+- Production Safety check found migrations `0001` through `0028` applied on the linked Supabase project, server-only service role usage, no committed `.env.local`, no `NEXT_PUBLIC` service-role key usage, existing rate limits on Beta invite verification and analytics events, and daily generation limits on generation APIs.
+
+Latest Beta Launch Preparation smoke:
+
+- Local production preview: `http://127.0.0.1:3001`
+- `/api/health`: `200`, database `true`
+- Text task: `4425d7f2-7bc6-4969-85ea-3c9505592765`, `completed`, `usage_history.provider/model = local-text-provider / local-content-pack`, estimated cost `0.25`
+- Image task: `d50490a7-247e-4005-a558-088e111e3a6e`, `completed`, `usage_history.provider/model = local-image-provider / local-svg-image`, estimated cost `0.40`
+- Video task: `da082342-bf53-4364-830c-da88ad513367`, `completed`, `usage_history.provider/model = local-video-provider / local-svg-video-preview`, estimated cost `1.00`
 
 Short Drama MVP is now usable as a complete Beta content-production path:
 
@@ -253,4 +276,4 @@ Remaining risks:
 5. Short Drama local fallback creates SVG preview assets for video scenes. This is enough for Beta demo value, but production video quality depends on a real video provider.
 6. Provider readiness dry-run does not prove external provider account quota or generation quality; each real provider still needs one controlled paid smoke test before public Beta promises.
 7. Distribution MVP prepares export packages for manual publishing; real TikTok, YouTube Shorts, and Xiaohongshu publishing still requires platform OAuth, review, quota, and compliance work.
-8. `usage_history.provider/model` for the local Beta Dry Run is still derived from the existing Agent pricing configuration (`deepseek/deepseek-chat`) even when the preview runtime uses local fallback generation. This does not block Beta testing, but cost attribution should be cleaned up before serious provider-cost reporting.
+8. Build currently passes with a Next/Turbopack NFT tracing warning for the generated asset route. It is not blocking Beta, but should be reviewed before production hardening if standalone bundle size grows unexpectedly.

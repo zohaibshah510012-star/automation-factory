@@ -49,6 +49,8 @@ function startOfUtcDay() {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
 }
 
+const knownCostProviders = ["deepseek", "openai", "flux", "kling", "runway", "local-text-provider", "local-image-provider", "local-video-provider"];
+
 function providerCostPerMillion(provider: string, direction: "input" | "output") {
   const key = `${provider.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_${direction.toUpperCase()}_COST_PER_1M_USD`;
   return parseNumber(process.env[key], 0);
@@ -133,7 +135,7 @@ export async function getCostOverview() {
     console.error("[automation-factory] ai_cost_overview_unavailable", { message: error.message });
     return {
       today: { aiCalls: 0, creditsConsumed: 0, estimatedProviderCost: 0 },
-      byProvider: Object.fromEntries(["deepseek", "openai", "flux", "kling", "runway"].map((provider) => [provider, { calls: 0, credits: 0, estimatedCost: 0, failed: 0 }])),
+      byProvider: Object.fromEntries(knownCostProviders.map((provider) => [provider, { calls: 0, credits: 0, estimatedCost: 0, failed: 0 }])),
       trackingAvailable: false,
     };
   }
@@ -149,7 +151,7 @@ export async function getCostOverview() {
     return grouped;
   }, {});
 
-  for (const provider of ["deepseek", "openai", "flux", "kling", "runway"]) {
+  for (const provider of knownCostProviders) {
     byProvider[provider] = byProvider[provider] ?? { calls: 0, credits: 0, estimatedCost: 0, failed: 0 };
   }
 

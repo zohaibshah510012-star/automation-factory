@@ -2,6 +2,27 @@
 
 ## 2026-07-17
 
+### Beta Launch Preparation
+
+- Fixed local fallback cost attribution so usage and cost reporting no longer inherit `deepseek/deepseek-chat` from Agent pricing when the runtime uses local fallback providers.
+- Recorded text fallback usage as `local-text-provider / local-content-pack`.
+- Recorded image fallback usage as `local-image-provider / local-svg-image`.
+- Recorded video fallback usage as `local-video-provider / local-svg-video-preview`.
+- Added local fallback providers to the Admin cost overview aggregation defaults.
+- Confirmed existing Demo Templates cover AI Short Drama, Product Advertisement, and Social Media Content Beta Launch Pack needs.
+- Confirmed migration status remains `0001` through `0028` applied on the linked Supabase project.
+- Confirmed server-only service role handling, no `NEXT_PUBLIC` service-role key usage, generation daily limits, and existing rate limits on Beta invite verification and analytics events.
+
+### Validation
+
+- `pnpm lint`: passed
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm build`: passed with existing Next/Turbopack NFT tracing warning for the generated asset route.
+- Local smoke: `/api/health` returned `200` with database `true`.
+- Text smoke: completed with `usage_history` and `ai_provider_costs` provider/model `local-text-provider / local-content-pack`.
+- Image smoke: completed with `usage_history` and `ai_provider_costs` provider/model `local-image-provider / local-svg-image`.
+- Video smoke: completed with `usage_history` and `ai_provider_costs` provider/model `local-video-provider / local-svg-video-preview`.
+
 ### Beta Dry Run
 
 - Applied `0028_beta_validation_readiness.sql` to the target Supabase project with `supabase db push`.

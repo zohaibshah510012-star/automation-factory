@@ -26,6 +26,23 @@ function durationMs(task: ContentTask) {
   return Math.max(0, new Date(task.updatedAt).getTime() - new Date(task.createdAt).getTime());
 }
 
+function textGenerationAttribution(pricing?: { provider: string | null; model: string | null }) {
+  const activeProvider = getActiveProviderName();
+  if (activeProvider === "local" || activeProvider === "flux" || activeProvider === "runway" || activeProvider === "kling") {
+    return { provider: "local-text-provider", model: "local-content-pack" };
+  }
+  const fallbackModelByProvider: Record<string, string | null> = {
+    deepseek: process.env.DEEPSEEK_TEXT_MODEL ?? "deepseek-chat",
+    openai: process.env.OPENAI_TEXT_MODEL ?? "gpt-4.1-mini",
+    gemini: process.env.GEMINI_TEXT_MODEL ?? "gemini-2.5-flash",
+    alternative: pricing?.model ?? null,
+  };
+  return {
+    provider: activeProvider,
+    model: fallbackModelByProvider[activeProvider] ?? pricing?.model ?? null,
+  };
+}
+
 function userFacingGenerationError(error: unknown) {
   return getProviderErrorMessage(error);
 }
@@ -124,7 +141,7 @@ async function syncContentPack(task: ContentTask) {
     supabase.from("assets").delete().eq("content_task_id", task.id),
     supabase.from("ai_generations").upsert({
       content_task_id: task.id,
-      provider: getActiveProviderName(),
+      provider: textGenerationAttribution().provider,
       stage: "text",
       status: task.status,
       input: { topic: task.topic, brief: task.brief ?? null },
@@ -154,7 +171,7 @@ async function syncGenerationStatus(task: ContentTask) {
   if (!supabase) return;
   await supabase.from("ai_generations").upsert({
     content_task_id: task.id,
-    provider: getActiveProviderName(),
+    provider: textGenerationAttribution().provider,
     stage: "text",
     status: task.status,
     input: { topic: task.topic, brief: task.brief ?? null },
@@ -233,7 +250,8 @@ export async function runTask(taskId: string) {
       generateVideo: () => getVideoProvider().generateVideo({ taskId: task.id, prompt: prompt.userPrompt }),
     });
     const content = agent.content;
-    console.info("[automation-factory] provider_completed", { taskId: task.id, provider: getActiveProviderName(), prompt: prompt.name, version: prompt.version, workflowId: agent.workflowId, workflowRunId: agent.workflowRunId, agentId: agent.agentId, agentRunId: agent.agentRunId });
+    const textAttribution = textGenerationAttribution(pricing);
+    console.info("[automation-factory] provider_completed", { taskId: task.id, provider: textAttribution.provider, model: textAttribution.model, prompt: prompt.name, version: prompt.version, workflowId: agent.workflowId, workflowRunId: agent.workflowRunId, agentId: agent.agentId, agentRunId: agent.agentRunId });
 
     task.title = content.title;
     task.script = content.script;
@@ -252,7 +270,7 @@ export async function runTask(taskId: string) {
 
     task.status = "completed";
     task.updatedAt = timestamp();
-    const settlement = await commitCredits(task, pricing);
+    const settlement = await commitCredits(task, textAttribution);
     await syncTask(task);
     await syncContentPack(task);
     await recordAiProviderCost({
@@ -260,20 +278,20 @@ export async function runTask(taskId: string) {
       contentTaskId: task.id,
       aiGenerationId: await findAiGenerationId(task.id),
       usageHistoryId: settlement.usageHistoryId,
-      provider: getActiveProviderName(),
-      model: pricing.model,
+      provider: textAttribution.provider,
+      model: textAttribution.model,
       taskType: task.taskType ?? "short_video_script",
       usage: content.usage,
       creditsUsed: task.creditsCharged ?? pricing.amount,
       status: "completed",
     });
     if (task.taskType === "drama" && task.userId) await createDramaSceneImages({ dramaId: task.id, userId: task.userId, topic: task.topic, scenes: content.storyboard });
-    await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, workflowType: task.taskType, provider: getActiveProviderName(), creditsUsed: task.creditsCharged ?? pricing.amount, durationMs: durationMs(task) } });
+    await trackProductEvent({ eventName: "task_complete", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, workflowType: task.taskType, provider: textAttribution.provider, model: textAttribution.model, creditsUsed: task.creditsCharged ?? pricing.amount, durationMs: durationMs(task) } });
     if (task.userId) {
       await trackProductEventOnce({ eventName: "first_generation_completed", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, workflowType: task.taskType, creditsUsed: task.creditsCharged ?? pricing.amount, durationMs: durationMs(task) } });
       if (task.assets.length) await trackProductEventOnce({ eventName: "first_asset_created", userId: task.userId, surface: "content", path: "task-store", properties: { taskId: task.id, assetCount: task.assets.length } });
     }
-    await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_completed", task_id: task.id, metadata: { provider: getActiveProviderName() } });
+    await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_completed", task_id: task.id, metadata: { provider: textAttribution.provider, model: textAttribution.model } });
     console.info("[automation-factory] workflow_completed", { taskId: task.id });
   } catch (error) {
     task.status = "failed";
@@ -284,6 +302,7 @@ export async function runTask(taskId: string) {
     });
     task.error = userFacingGenerationError(error);
     task.updatedAt = timestamp();
+    const textAttribution = textGenerationAttribution();
     await refundCredits(task);
     await syncTask(task);
     await syncGenerationStatus(task);
@@ -291,13 +310,14 @@ export async function runTask(taskId: string) {
       userId: task.userId,
       contentTaskId: task.id,
       aiGenerationId: await findAiGenerationId(task.id),
-      provider: getActiveProviderName(),
+      provider: textAttribution.provider,
+      model: textAttribution.model,
       taskType: task.taskType ?? "short_video_script",
       creditsUsed: 0,
       status: "failed",
       error: task.error,
     });
-    await trackProductEvent({ eventName: "generation_failed", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, workflowType: task.taskType, provider: getActiveProviderName(), error: task.error, durationMs: durationMs(task) } });
+    await trackProductEvent({ eventName: "generation_failed", userId: task.userId, surface: "product", path: "task-store", properties: { taskId: task.id, taskType: task.taskType, workflowType: task.taskType, provider: textAttribution.provider, model: textAttribution.model, error: task.error, durationMs: durationMs(task) } });
     await getSupabaseServerClient()?.from("system_logs").insert({ level: "error", event: "task_failed", task_id: task.id, metadata: { type: getProviderErrorType(error) } });
     console.error("[automation-factory] workflow_failed", { taskId: task.id, type: getProviderErrorType(error) });
   }
