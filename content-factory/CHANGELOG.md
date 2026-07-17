@@ -2,6 +2,23 @@
 
 ## 2026-07-17
 
+### Founder Revenue Validation
+
+- Added migration `0032_founder_revenue_validation.sql` with admin-only `founder_customer_projects`.
+- Added `/api/admin/revenue` for Founder customer project records, Revenue Validation metrics, Demo Case creation, and project status updates.
+- Added `/admin/revenue` as the Revenue Validation View for project count, workflow usage, generation count, AI cost, Credits used, delivered assets, and project status.
+- Added a Founder Demo Case flow that records product information, commercial need, Marketing Strategy, Script, Image Assets, Video Preview, and Distribution Package as a sellable delivery path.
+- Preserved existing Beta, AI Runtime, Workflow Engine, Billing Core, Credits Core, Provider, and Workflow behavior.
+
+### Founder Beta Cohort 1 Execution
+
+- Ran the initial clean cohort monitoring check for `Founder Beta Cohort 1`.
+- Confirmed the cohort is `running` with target users `5`.
+- Confirmed `beta_cohort_members` is still `0`, so no clean real-user Beta metrics are available yet.
+- Confirmed the current clean cohort metrics are intentionally zero instead of polluted by historical smoke/dev rows.
+- Did not auto-bind users, add features, or change code.
+- Did not create a commit because no P0/P1 repair was made.
+
 ### Founder Beta Cohort Data Cleanup
 
 - Added migration `0031_founder_beta_data_cleanup.sql` for additive task timing fields and cohort member query support.

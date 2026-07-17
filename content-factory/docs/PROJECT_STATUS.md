@@ -4,13 +4,56 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Founder Beta Cohort Data Cleanup - isolate real Founder Beta Cohort 1 metrics from historical smoke/dev data, bind real Beta users explicitly, and ensure new generation tasks record usable duration data.
+Founder Revenue Validation - use Automation Factory internally as the first real customer workflow to create a sellable commercial demo case and validate whether generated content can support customer revenue.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
 ## Latest verified commit before this report
 
-`2033e7094494d0f29ccbf3137760b20067e22af4`
+`6b949b510e893d95428fbd1b6d0c6673921c832c`
+
+## Founder Revenue Validation status
+
+This phase shifts the validation goal from waiting for external Beta users to using the Founder as the first real customer. The objective is to produce and track one commercial case that can be used to sell the first customer.
+
+What changed:
+
+- Added migration `0032_founder_revenue_validation.sql`.
+- Added admin-only table `founder_customer_projects` for customer/brand projects, workflow used, generated assets, generation cost, Credits used, project status, result notes, and delivery metadata.
+- Added `/api/admin/revenue` for Revenue Validation metrics and project recording.
+- Added `/admin/revenue` as the Revenue Validation View.
+- Added Founder Demo Case creation flow without introducing a new AI workflow.
+
+Revenue Validation View tracks:
+
+- Project count
+- Workflow usage
+- Linked generation count
+- AI cost
+- Credits used
+- Delivered / recorded assets
+- Project status
+
+Founder Demo Case flow:
+
+1. Input product information and commercial need.
+2. Use existing workflows to generate Marketing Strategy, Script, Image Assets, Video Preview, and Distribution Package.
+3. Record the project in `founder_customer_projects`.
+4. Link generated task IDs / assets / distribution package in project notes and metadata.
+5. Move status from `planned` to `ready_to_sell`, `delivered`, `won`, or `lost`.
+
+Constraints preserved:
+
+- No new AI capability.
+- No new workflow.
+- No provider changes.
+- No AI Runtime, Workflow Engine, Billing Core, or Credits Core changes.
+- Existing Beta system remains unchanged.
+
+Deployment note:
+
+- `0032_founder_revenue_validation.sql` is committed as a migration file.
+- Apply it to the target Supabase database before using `/admin/revenue` against a remote environment.
 
 ## Founder Beta Cohort Data Cleanup status
 
@@ -55,6 +98,46 @@ Validation:
 Next operating step:
 
 Bind the first 5 real Beta users in `/admin/founder`, then run a clean 48-72 hour Founder Beta cycle before choosing the next product direction.
+
+## Founder Beta Cohort 1 Execution status
+
+Current execution gate:
+
+- Cohort: `Founder Beta Cohort 1`
+- Target users: `5`
+- Status: `running`
+- Current members: `0`
+- Current clean cohort metrics: all `0` because no real users have been explicitly bound.
+
+Current monitoring result:
+
+- Signup users: `0`
+- Workspace users: `0`
+- First generation started users: `0`
+- Completed users: `0`
+- Feedback users: `0`
+- Activation Rate: `0%`
+- Completion Rate: `0%`
+- Workflow Preference: none yet
+- Credits consumed: `0`
+- Estimated cost: `$0`
+- Feedback count: `0`
+- Payment signals: `0`
+- Failed tasks: `0`
+- Provider errors: `0`
+- Average duration: `0ms`
+
+Execution decision:
+
+- Do not auto-bind historical users.
+- Do not use historical smoke/dev data for Founder Beta Report.
+- Wait for the real 5-user email list, then bind each user in `/admin/founder`.
+- Start the 48-72 hour measurement window only after `beta_cohort_members` reaches `5`.
+
+Issue-handling rule for this phase:
+
+- Fix only P0/P1 issues reported by real bound cohort users.
+- Do not add new workflows, providers, AI capabilities, or publishing features during this run.
 
 ## Founder Beta Execution status
 
