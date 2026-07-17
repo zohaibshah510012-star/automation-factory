@@ -80,7 +80,7 @@ Current local migrations are continuous from:
 ```text
 0001_content_factory.sql
 ...
-0028_beta_validation_readiness.sql
+0030_founder_beta_run.sql
 ```
 
 Production deployment steps:
@@ -94,8 +94,8 @@ supabase migration list
 
 Acceptance criteria:
 
-- Remote Supabase migration list shows all migrations through `0028_beta_validation_readiness.sql`.
-- Required tables exist: `profiles`, `content_tasks`, `credit_transactions`, `plans`, `subscriptions`, `payment_providers`, `distribution_jobs`, `short_drama_assets`, `product_events`, `user_feedback`, `workspaces`.
+- Remote Supabase migration list shows all migrations through `0030_founder_beta_run.sql`.
+- Required tables exist: `profiles`, `content_tasks`, `credit_transactions`, `plans`, `subscriptions`, `payment_providers`, `distribution_jobs`, `short_drama_assets`, `product_events`, `user_feedback`, `workspaces`, `beta_cohorts`, `beta_cohort_members`, `beta_review_notes`.
 - Required RPCs exist: `grant_subscription_credits`, `admin_adjust_user_credits`.
 
 Use `supabase db push` for the current Supabase CLI workflow. If the deployment environment standardizes on migration bundles/CI later, replace this with the equivalent non-interactive migration deploy command.
@@ -153,6 +153,7 @@ Important: current verification machine does not have Docker CLI installed, so D
 - `/admin/monitor`
 - `/admin/billing`
 - `/admin/payments`
+- `/admin/founder`
 
 ## 8. Health verification
 
@@ -168,6 +169,7 @@ Admin verification:
 - `/admin/system`: database, storage, AI, payment, email, webhook, cron, environment
 - `/admin/checklist`: launch gate with READY/WARNING/ERROR
 - `/admin/monitor`: task success/failure rate, provider errors, latency, credits, queue status
+- `/admin/founder`: Founder Beta Run cohort, first-value metrics, cost signals, and review notes
 
 Smoke tests:
 
@@ -178,6 +180,7 @@ Smoke tests:
 5. Prompt/content task creation
 6. Image/video task creation if providers are configured
 7. Admin user/task/billing/payment/analytics pages
+8. Founder Beta Run page and Review Notes workflow
 
 ## 9. Rollback procedure
 

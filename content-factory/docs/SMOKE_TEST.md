@@ -100,7 +100,7 @@ Use this checklist after production deployment and before inviting real users.
 ### 6. Checklist
 
 - [ ] Open `/admin/checklist`.
-- [ ] Confirm migration check references `0029_beta_operations.sql`.
+- [ ] Confirm migration check references `0030_founder_beta_run.sql`.
 - [ ] Confirm Security is READY.
 - [ ] Confirm Backup is READY or explicitly accepted as WARNING.
 
@@ -110,6 +110,14 @@ Use this checklist after production deployment and before inviting real users.
 - [ ] Confirm task success/failure metrics render.
 - [ ] Confirm queue status renders.
 - [ ] Confirm provider error list renders or shows empty state.
+
+### 8. Founder Beta Run
+
+- [ ] Open `/admin/founder`.
+- [ ] Confirm Founder metrics render for invited, activated, and completed Beta users.
+- [ ] Confirm the Founder cohort target is 5 users.
+- [ ] Add a Beta Review Note for a test observation.
+- [ ] Confirm the note appears in the Review Notes table and can move through `open`, `reviewing`, and `resolved`.
 
 ## Pass criteria
 

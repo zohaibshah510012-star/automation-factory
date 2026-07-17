@@ -4,13 +4,43 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Beta Operations & User Validation - support 3-5 real Beta users and capture activation, usage, feedback, and revenue-readiness data.
+Founder Beta Run - support the first 5 real Beta users, capture first-value evidence, and turn feedback into product/business decisions.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
 ## Latest verified commit before this report
 
-`89c64aa10b45589503a2b63cedbac8493d9eb1c3`
+`881b2f72a2c3257f61a4f2d6baa51d617b933552`
+
+## Founder Beta Run status
+
+This sprint adds the operating layer needed for the founder-led 5-user Beta run without adding new AI capabilities, providers, billing logic, or workflow engine changes.
+
+New Founder Beta Run capabilities:
+
+- `/admin/founder` is the Founder View for the first real-user cohort.
+- `/api/admin/founder` aggregates invited, registered, activated, completed, first-generation rate, completion rate, average Time To First Value, most-used workflow, Credits used, estimated cost, feedback score, result quality, and upgrade-interest signals.
+- `0030_founder_beta_run.sql` adds admin-only operating tables:
+  - `beta_cohorts`
+  - `beta_cohort_members`
+  - `beta_review_notes`
+- Founder View supports creating the default 5-user Founder Beta Cohort.
+- Founder View links to `/admin/beta` for Demo Invite creation instead of hard-coding credentials or fake users.
+- Beta Review Notes capture user feedback, needs, bugs, feature requests, and business signals with status tracking (`open`, `reviewing`, `resolved`).
+- Remote Supabase now has `0030_founder_beta_run.sql` applied.
+- Default remote cohort created: `Founder Beta Cohort 1`, target users `5`, status `running`.
+
+Founder Beta user test path:
+
+1. Admin creates or reuses the Founder Beta Cohort.
+2. Admin creates up to 5 invites from `/admin/beta`.
+3. User opens invite link and signs up.
+4. User reaches Dashboard and creates the recommended `short_drama` workflow.
+5. User reviews Task Result and Assets.
+6. User submits feedback.
+7. Founder records decision-quality notes in `/admin/founder`.
+
+The core validation question for this stage is commercial: can 3-5 invited users understand the product, reach a first result, and produce actionable feedback without engineering hand-holding?
 
 ## Verified user path
 
@@ -46,13 +76,14 @@ Important observed data:
 
 ## Supabase migration status
 
-Local migrations currently run from `0001` through `0029`.
+Local migrations currently run from `0001` through `0030`.
 
 Remote Supabase was found at `0026` during E2E. `0027_beta_experiment_tracking.sql` was applied with `supabase db push`.
 
 Remote now reports:
 
 - `0001` through `0029`: applied
+- `0030_founder_beta_run.sql`: applied locally and remotely for Founder Beta Run operations.
 
 This fixed missing `feedback_submitted` product analytics events. Before `0027` was applied, feedback rows were saved but the analytics event was rejected by the older `product_events_event_name_check` constraint.
 
@@ -62,6 +93,8 @@ Latest migration sync:
 - `0028_beta_validation_readiness.sql` has been pushed to the target Supabase project and confirmed with `supabase migration list`.
 - `0029_beta_operations.sql` adds `beta_user_statuses` for manual Beta cohort status tracking (`invited`, `active`, `completed`, `churned`) with admin-only RLS.
 - `0029_beta_operations.sql` has been pushed to the target Supabase project and confirmed with `supabase migration list`.
+- `0030_founder_beta_run.sql` adds Founder Beta Run cohort tracking and review notes with admin-only RLS.
+- `0030_founder_beta_run.sql` has been pushed to the target Supabase project and confirmed with `supabase migration list`.
 
 ## Provider status
 
@@ -145,7 +178,8 @@ Beta Launch Preparation status:
   - Social Media Content: `xiaohongshu_content` and `youtube_shorts`
 - Demo data readiness is covered by Showcase, Studio demo preview, Workflow Templates, local generated image SVGs, local video preview SVGs, and Short Drama sample outputs from the Dry Run.
 - Feedback Loop remains active from user feedback submission into `user_feedback`, product events, Admin Feedback, Admin Analytics, and Beta Insights.
-- Production Safety check found migrations `0001` through `0029` applied on the linked Supabase project, server-only service role usage, no committed `.env.local`, no `NEXT_PUBLIC` service-role key usage, existing rate limits on Beta invite verification and analytics events, and daily generation limits on generation APIs.
+- Production Safety check previously found migrations `0001` through `0029` applied on the linked Supabase project, server-only service role usage, no committed `.env.local`, no `NEXT_PUBLIC` service-role key usage, existing rate limits on Beta invite verification and analytics events, and daily generation limits on generation APIs.
+- Founder Beta Run migration `0030_founder_beta_run.sql` is now applied on the linked Supabase project.
 
 Latest Beta Launch Preparation smoke:
 
@@ -162,7 +196,7 @@ Beta Operations readiness status:
 - Admin can manually mark Beta users as `invited`, `active`, `completed`, or `churned`; updates are written to `beta_user_statuses` and audited in `audit_logs`.
 - Activation metrics now include signup completed, workspace created, first generation started, first generation completed, feedback submitted, and average Time To First Value.
 - Feedback Intelligence now groups feedback into content quality, generation speed, usability, use case, and payment-intent signals, with average score, result quality, recommendation rate, open feedback count, and common issue labels.
-- Production diagnostics and checklists now expect `0029_beta_operations.sql`.
+- Production diagnostics and checklists now expect `0030_founder_beta_run.sql`.
 - Generated asset route no longer emits the previous Turbopack NFT tracing warning during `pnpm build`.
 
 Short Drama MVP is now usable as a complete Beta content-production path:

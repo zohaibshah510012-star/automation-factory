@@ -6,14 +6,14 @@ Generated for GA Production Ops Hardening v1.
 
 - Branch: `master`
 - Application root: `content-factory`
-- Latest expected migration: `0028_beta_validation_readiness.sql`
+- Latest expected migration: `0030_founder_beta_run.sql`
 - Build target: Next.js standalone
 - Deployment modes: PM2 or Docker Compose behind Nginx
 
 ## Passed locally
 
 - Git working tree was clean before hardening work started.
-- Local migrations are continuous from `0001` to `0028`.
+- Local migrations are continuous from `0001` to `0030`.
 - `SUPABASE_SERVICE_ROLE_KEY` is documented as server-only.
 - `NEXT_PUBLIC_*` variables are limited to public Supabase/app values.
 - Payment verification includes owner/admin context.
@@ -24,7 +24,7 @@ Generated for GA Production Ops Hardening v1.
 
 The release is ready only after these production checks pass:
 
-1. Apply Supabase migrations through `0028_beta_validation_readiness.sql`.
+1. Apply Supabase migrations through `0030_founder_beta_run.sql`.
 2. Configure `.env.production` or hosting secrets from `.env.production.example`.
 3. Run `pnpm lint`, `pnpm exec tsc --noEmit`, and `pnpm build`.
 4. Start with PM2 or Docker Compose.
@@ -32,6 +32,7 @@ The release is ready only after these production checks pass:
 6. Verify `/api/health`.
 7. Review `/admin/checklist`.
 8. Run user and admin smoke tests.
+9. Review `/admin/founder` before and after each Founder Beta interview.
 
 ## Known warnings
 
@@ -52,3 +53,4 @@ The release is ready only after these production checks pass:
 - Payment mock checkout/verify
 - Admin system/checklist/monitor
 - Admin users/tasks/billing/payments/analytics
+- Founder Beta cohort, first-value metrics, and review-note workflow

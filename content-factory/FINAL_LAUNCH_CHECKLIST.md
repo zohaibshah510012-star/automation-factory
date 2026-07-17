@@ -1,12 +1,12 @@
 # Final Launch Checklist
 
-Baseline: `0001` through `0028`.
+Baseline: `0001` through `0030`.
 
 ## 1. Supabase migration verification
 
-- [ ] `supabase/migrations` contains exactly `0001` through `0028`
+- [ ] `supabase/migrations` contains exactly `0001` through `0030`
 - [ ] No duplicate migration prefixes
-- [ ] Production Supabase has applied through `0028_beta_validation_readiness.sql`
+- [ ] Production Supabase has applied through `0030_founder_beta_run.sql`
 - [ ] Required billing/payment/distribution/analytics/workspace tables exist
 - [ ] `grant_subscription_credits` and `admin_adjust_user_credits` RPCs exist
 
@@ -79,6 +79,7 @@ docker compose logs -f web
 - [ ] `/admin/billing`
 - [ ] `/admin/payments`
 - [ ] `/admin/analytics`
+- [ ] `/admin/founder`
 
 ## 10. Billing and payment
 
@@ -105,6 +106,7 @@ docker compose logs -f web
 - [ ] User submits feedback with satisfaction, notes, and optional task ID
 - [ ] Admin feedback queue supports `open`, `reviewing`, and `resolved`
 - [ ] `/admin/analytics` shows Beta Metrics
+- [ ] `/admin/founder` shows the Founder Beta Run cohort, first-value metrics, cost signals, and review notes
 
 ## 12. Rollback
 

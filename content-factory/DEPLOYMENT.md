@@ -1,6 +1,6 @@
 # Automation Factory Deployment Guide
 
-Production baseline: migration `0001_content_factory.sql` through `0028_beta_validation_readiness.sql`.
+Production baseline: migration `0001_content_factory.sql` through `0030_founder_beta_run.sql`.
 
 ## 1. Build verification
 
@@ -50,7 +50,7 @@ supabase migration list
 Expected local latest migration:
 
 ```text
-0028_beta_validation_readiness.sql
+0030_founder_beta_run.sql
 ```
 
 Key tables/RPCs expected after migration:
@@ -69,6 +69,11 @@ Key tables/RPCs expected after migration:
 - `short_drama_scenes`
 - `product_events`
 - `user_feedback`
+- `beta_invites`
+- `beta_user_statuses`
+- `beta_cohorts`
+- `beta_cohort_members`
+- `beta_review_notes`
 - `workspaces`
 - `workspace_members`
 - `grant_subscription_credits`
@@ -125,5 +130,6 @@ After login with an admin email:
 - `/admin/billing`
 - `/admin/payments`
 - `/admin/analytics`
+- `/admin/founder`
 
 Use `/admin/checklist` as the production launch gate.
