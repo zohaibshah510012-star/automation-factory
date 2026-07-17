@@ -4,7 +4,7 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Production Launch Readiness - prepare Automation Factory for controlled real-customer Beta by aligning production docs, dependency gates, environment checks, and smoke test plans.
+Production Verification - verify the production Supabase, VPS runtime, production environment, and smoke test path before inviting controlled real customers.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
@@ -43,9 +43,43 @@ Completed:
 
 Current Production readiness: documentation and local build readiness are aligned; VPS/Supabase production verification is still required before inviting real customers.
 
+## Production Verification update
+
+Production verification was partially completed from the local operations workstation.
+
+Verified:
+
+- `supabase migration list` connected to the remote database and reported local/remote migrations `0001` through `0032`.
+- Remote required tables were reachable through the Supabase service role connection:
+  - `founder_customer_projects`
+  - `beta_invites`
+  - `beta_user_statuses`
+  - `beta_cohorts`
+  - `beta_cohort_members`
+  - `beta_review_notes`
+  - `profiles`
+  - `credit_transactions`
+  - `usage_history`
+  - `content_tasks`
+  - `assets`
+  - `image_tasks`
+  - `video_tasks`
+  - `short_drama_assets`
+  - `short_drama_scenes`
+  - `ai_provider_costs`
+- `.env.production.example` contains the required production variable groups for Supabase, admin/auth, AI providers, storage, payment, webhook, cron, and proxy settings.
+
+Blocked:
+
+- Supabase backup was not created from this machine. `supabase db dump` failed because Docker is not installed; `pg_dump` is also unavailable; `DATABASE_URL` is not configured.
+- VPS runtime was not verified because no production SSH host/domain/PM2/Docker/Nginx access context is available in this workspace.
+- Production smoke tests were not executed because no running production URL was available.
+
+Production readiness status: not ready for controlled Beta until the backup, VPS runtime, environment, and smoke test blockers are resolved on the production server.
+
 ## Latest verified commit before this report
 
-`e948ff9b33a00dcbcc3cb43f48d408cc9d246233`
+`662d116e29a0b00066012a142fe3168c0af9606b`
 
 ## Customer Brief Intake update
 

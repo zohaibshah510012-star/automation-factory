@@ -2,6 +2,15 @@
 
 ## 2026-07-17
 
+### VPS Production Verification
+
+- Verified remote Supabase migrations are aligned from `0001` through `0032`.
+- Verified required Supabase tables for Founder revenue, Beta operations, Credits, usage, tasks, and assets are reachable.
+- Confirmed `.env.production.example` covers required production variable groups without committing secrets.
+- Attempted Supabase CLI backup, but backup creation was blocked because Docker is not installed, `pg_dump` is unavailable, and `DATABASE_URL` is not configured on this workstation.
+- VPS runtime and production smoke tests were not executed because no production SSH host/domain/runtime access context was available in this workspace.
+- Preserved AI Runtime, Workflow Engine, Billing Core, Credits Core, and database schema.
+
 ### Production Ops Preparation
 
 - Aligned production migration baseline documents to `0032_founder_revenue_validation.sql`.
