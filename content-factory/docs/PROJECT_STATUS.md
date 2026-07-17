@@ -8,6 +8,26 @@ Founder Customer Acquisition - let real customers submit commercial requirements
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
+## Production isolation assessment update
+
+The production isolation assessment is complete in `docs/AI_COMPANY_PRODUCTION_ISOLATION_REPORT.md`.
+
+Conclusion:
+
+- AI-Company can be isolated for Beta as an independent SaaS service after production operations configuration is completed.
+- No runtime dependency was found on afeng MySQL.
+- Redis is not a current runtime dependency; it is only reserved in Docker Compose future profiles.
+- No dependency was found on AIXHub or Yuedong / 悦动.
+- Required Beta dependencies are Supabase, VPS runtime, domain/Nginx/SSL, and selected AI provider credentials.
+
+Must-fix before Beta traffic:
+
+- Align production migration documentation from `0030` to `0032`.
+- Confirm production Supabase migrations are applied through `0032_founder_revenue_validation.sql`.
+- Configure production Supabase/admin/provider environment variables.
+- Create a pre-Beta Supabase backup.
+- Run production smoke tests for `/api/health`, `/admin/checklist`, `/brief`, workflow generation, assets, feedback, and `/admin/revenue`.
+
 ## Latest verified commit before this report
 
 `8b280ee9273d58a953db0e522dce0744d90d64fa`

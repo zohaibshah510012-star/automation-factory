@@ -2,6 +2,18 @@
 
 ## 2026-07-17
 
+### Production Isolation Assessment
+
+- Added `docs/AI_COMPANY_PRODUCTION_ISOLATION_REPORT.md`.
+- Assessed whether AI-Company can enter Beta independently from other server assets.
+- Confirmed no runtime dependency was found on afeng MySQL.
+- Confirmed Redis is not a current runtime dependency and is only reserved in Docker Compose future profiles.
+- Confirmed no dependency was found on AIXHub or Yuedong / 悦动.
+- Identified Supabase, VPS runtime, domain/Nginx/SSL, and selected AI provider credentials as the minimum isolated Beta dependencies.
+- Identified must-fix production operations items before Beta traffic: migration docs must align to `0032`, production Supabase must be verified through `0032`, production env must be configured, backup must exist, and production smoke tests must pass.
+- Added `ACTIVE_WORK.md` to record the current production isolation phase and next action.
+- No server, code, or database changes were made.
+
 ### Customer Brief Intake
 
 - Added `/brief` as a Chinese customer-facing commercial Brief intake page.
