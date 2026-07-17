@@ -2,6 +2,17 @@
 
 ## 2026-07-17
 
+### Beta Dry Run
+
+- Applied `0028_beta_validation_readiness.sql` to the target Supabase project with `supabase db push`.
+- Confirmed remote migrations are applied from `0001` through `0028`.
+- Created and consumed a Demo invite user and an ordinary Beta test user.
+- Verified Invite -> Register/Login -> Bootstrap -> Workspace -> Short Drama Generate -> Result -> Assets -> Feedback.
+- Confirmed the Short Drama test task completed and saved 4 image assets plus 5 video preview assets.
+- Confirmed Credits changed from `1000` to `320` for the full Short Drama package including child media tasks.
+- Confirmed Beta events, feedback, Admin users, Admin tasks, Admin analytics, and Admin feedback visibility.
+- Recorded the remaining cost-attribution caveat: local Beta generation still reports usage provider/model from the existing Agent pricing configuration.
+
 ### Beta Validation Readiness
 
 - Added migration `0028_beta_validation_readiness.sql` for Beta workflow events and richer feedback fields.

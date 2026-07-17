@@ -52,14 +52,14 @@ Remote Supabase was found at `0026` during E2E. `0027_beta_experiment_tracking.s
 
 Remote now reports:
 
-- `0001` through `0027`: applied
+- `0001` through `0028`: applied
 
 This fixed missing `feedback_submitted` product analytics events. Before `0027` was applied, feedback rows were saved but the analytics event was rejected by the older `product_events_event_name_check` constraint.
 
-New local migration:
+Latest migration sync:
 
 - `0028_beta_validation_readiness.sql` adds Beta Validation events (`workflow_created`, `first_workflow_created`, `generation_failed`) and richer feedback fields (`result_quality`, `use_case`, `continue_use`).
-- Production Supabase still needs `supabase db push` before inviting external Beta users to use the new feedback and tracking fields.
+- `0028_beta_validation_readiness.sql` has been pushed to the target Supabase project and confirmed with `supabase migration list`.
 
 ## Provider status
 
@@ -168,6 +168,22 @@ Beta Validation readiness status:
 - `/admin/analytics` now shows Beta user count, active/activated signals, workflow usage, success rate, average generation cost, Credits consumed, and feedback distribution.
 - Demo readiness uses existing Workflow Templates, Showcase, Studio demo preview, local Image Provider fallback, and local Video preview fallback. A demo account should be created with `/admin/beta` rather than hard-coded credentials.
 
+Latest Beta Dry Run result:
+
+- Target Supabase migrations: `0001` through `0028` applied.
+- Demo invite user created, logged in, bootstrapped, and invite consumed.
+- Ordinary Beta user created, logged in, bootstrapped, workspace created, and invite consumed.
+- Short Drama workflow created from API and reached `completed`.
+- Main task id: `ea71ec35-33c2-47ca-80bb-5f0e51d05ec7`.
+- Short Drama asset status: `completed`.
+- Assets saved on the main task: 4 image assets and 5 video preview assets.
+- Credits: `1000 -> 320` after the full Short Drama package including child image/video preview tasks.
+- Feedback submitted with satisfaction `5/5`, result quality `4/5`, use case, task linkage, and continue-use intent.
+- Product events confirmed: `signup_completed`, `first_workspace_created`, `workflow_created`, `first_workflow_created`, `first_generation_started`, `task_complete`, `first_generation_completed`, `credits_consumed`, and `feedback_submitted`.
+- Pages verified with `200`: `/dashboard`, `/create`, `/tasks/[id]`, `/dashboard/studio/[id]`, `/assets`, `/dashboard/feedback`.
+- Admin APIs verified with `200`: `/api/admin/users`, `/api/admin/tasks`, `/api/admin/analytics`, `/api/admin/feedback`.
+- Admin Analytics showed workflow counts, success rate, average generation cost, Credits consumed, and feedback distribution.
+
 Distribution MVP status:
 
 - User-owned completed content can create distribution preparation jobs through `/api/distributions`.
@@ -237,4 +253,4 @@ Remaining risks:
 5. Short Drama local fallback creates SVG preview assets for video scenes. This is enough for Beta demo value, but production video quality depends on a real video provider.
 6. Provider readiness dry-run does not prove external provider account quota or generation quality; each real provider still needs one controlled paid smoke test before public Beta promises.
 7. Distribution MVP prepares export packages for manual publishing; real TikTok, YouTube Shorts, and Xiaohongshu publishing still requires platform OAuth, review, quota, and compliance work.
-8. `0028_beta_validation_readiness.sql` must be applied to the target Supabase project before the new feedback fields and event names work in production.
+8. `usage_history.provider/model` for the local Beta Dry Run is still derived from the existing Agent pricing configuration (`deepseek/deepseek-chat`) even when the preview runtime uses local fallback generation. This does not block Beta testing, but cost attribution should be cleaned up before serious provider-cost reporting.
