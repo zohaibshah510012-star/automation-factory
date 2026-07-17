@@ -30,6 +30,13 @@ New Founder Beta Run capabilities:
 - Remote Supabase now has `0030_founder_beta_run.sql` applied.
 - Default remote cohort created: `Founder Beta Cohort 1`, target users `5`, status `running`.
 
+Beta Launch checklist status:
+
+- Invite flow: covered by `/admin/beta` and `/api/beta/invites/verify`.
+- Signup / workspace / first-generation / result / feedback chain: covered by existing product events and Beta validation readiness.
+- Admin founder monitoring: covered by `/admin/founder`.
+- Daily diagnostic signals: failed generations, recent error logs, blocking points, and feedback classification are visible on `/admin/founder`.
+
 Founder Beta user test path:
 
 1. Admin creates or reuses the Founder Beta Cohort.
@@ -39,6 +46,7 @@ Founder Beta user test path:
 5. User reviews Task Result and Assets.
 6. User submits feedback.
 7. Founder records decision-quality notes in `/admin/founder`.
+8. Founder reviews the daily monitor section for failed generations, recent errors, blocking points, and feedback themes.
 
 The core validation question for this stage is commercial: can 3-5 invited users understand the product, reach a first result, and produce actionable feedback without engineering hand-holding?
 
@@ -227,6 +235,8 @@ SaaS operating layer status:
 - `/admin/analytics` provides revenue, Credits, provider cost, funnel, Beta, and feedback metrics.
 - `/admin/beta-insights` provides lifecycle status, Beta Health Score, active users, likely-to-pay users, at-risk users, retention, and revenue-readiness signals.
 - `/api/admin/overview` now includes provider readiness, Beta activation rate, feedback queue health, task counts, Credits usage, and provider summaries for lightweight operations dashboards.
+- `/admin/founder` now includes Beta launch checklist, blocking points, failed generations, recent error logs, feedback categories, pain points, feature requests, and payment signals.
+- Product feedback is now grouped into User Feedback, Bug, Feature Request, Need, and Business Signal inside the Founder review flow.
 
 Beta Validation readiness status:
 
@@ -236,6 +246,7 @@ Beta Validation readiness status:
 - Feedback now captures satisfaction, result quality, use case, continue-use intent, task linkage, content feedback, and suggestions.
 - `/admin/analytics` now shows Beta user count, active/activated signals, workflow usage, success rate, average generation cost, Credits consumed, and feedback distribution.
 - Demo readiness uses existing Workflow Templates, Showcase, Studio demo preview, local Image Provider fallback, and local Video preview fallback. A demo account should be created with `/admin/beta` rather than hard-coded credentials.
+- The launch checklist can now be checked from `/admin/founder` without leaving the operating dashboard.
 
 Latest Beta Dry Run result:
 

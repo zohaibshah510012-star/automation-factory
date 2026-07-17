@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -9,6 +9,7 @@ import {
   ClipboardListIcon,
   CoinsIcon,
   FlagIcon,
+  AlertTriangleIcon,
   MessageSquareTextIcon,
   RefreshCwIcon,
   RocketIcon,
@@ -82,6 +83,37 @@ type FounderData = {
     reviewing: number;
     resolved: number;
     byCategory: Array<{ category: string; count: number }>;
+  };
+  monitoring: {
+    launchChecklist: Record<string, { passed: boolean; count: number }>;
+    failedGenerations: Array<{
+      id: string;
+      userEmail: string | null;
+      taskType: string;
+      title: string;
+      error: string;
+      updatedAt: string;
+    }>;
+    recentErrors: Array<{
+      id: string;
+      event: string;
+      userEmail: string | null;
+      taskId: string | null;
+      message: string;
+      createdAt: string;
+    }>;
+    blockingPoints: Array<{
+      stage: string;
+      count: number;
+      users: Array<{ email?: string | null; since: string }>;
+    }>;
+    feedbackLoop: {
+      categories: Array<{ category: string; count: number }>;
+      mostUsedWorkflow: { name: string; count: number } | null;
+      biggestPainPoints: Array<{ category: string; priority: string; note: string; status: string }>;
+      mostWantedCapabilities: Array<{ priority: string; note: string; status: string }>;
+      willingnessToPaySignals: Array<{ source: string; priority: string; note: string; status: string }>;
+    };
   };
   generatedAt: string;
 };
@@ -181,6 +213,15 @@ export default function FounderBetaPage() {
     { label: "Feedback score", value: `${data?.metrics.business.feedbackScore ?? 0}/5`, helper: `${data?.metrics.business.feedbackCount ?? 0} submissions`, icon: MessageSquareTextIcon },
     { label: "Upgrade signals", value: data?.metrics.business.upgradeInterest ?? "-", helper: "pricing + billing intent", icon: ArrowUpRightIcon },
   ], [data]);
+  const launchChecklist = [
+    ["Invite flow", data?.monitoring.launchChecklist.inviteToSignup],
+    ["Signup completed", data?.monitoring.launchChecklist.signupCompleted],
+    ["Workspace created", data?.monitoring.launchChecklist.workspaceCreated],
+    ["First generation started", data?.monitoring.launchChecklist.firstGenerationStarted],
+    ["First generation completed", data?.monitoring.launchChecklist.firstGenerationCompleted],
+    ["Feedback submitted", data?.monitoring.launchChecklist.feedbackSubmitted],
+    ["Founder view", data?.monitoring.launchChecklist.founderViewReady],
+  ] as const;
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 p-6">
@@ -287,6 +328,183 @@ export default function FounderBetaPage() {
                 <span className="text-sm font-semibold">{value}</span>
               </div>
             ))}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Beta launch checklist</CardTitle>
+            <CardDescription>Daily gate for invite, signup, workspace, generation, result, and feedback readiness.</CardDescription>
+            <CardAction><CheckCircle2Icon /></CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-2 sm:grid-cols-2">
+            {launchChecklist.map(([label, item]) => (
+              <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/60 px-3 py-2" key={label}>
+                <span className="text-sm text-muted-foreground">{label}</span>
+                <div className="flex items-center gap-2">
+                  <Badge variant={item?.passed ? "secondary" : "outline"}>{item?.count ?? 0}</Badge>
+                  <span className={item?.passed ? "text-emerald-600" : "text-amber-600"}>{item?.passed ? "Ready" : "Watch"}</span>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>User blocking points</CardTitle>
+            <CardDescription>Where invited Beta users are currently stuck in the first-session funnel.</CardDescription>
+            <CardAction><AlertTriangleIcon /></CardAction>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {(data?.monitoring.blockingPoints ?? []).map((block) => (
+              <div className="rounded-lg border bg-background/60 p-3" key={block.stage}>
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium">{block.stage}</p>
+                  <Badge variant={block.count ? "destructive" : "secondary"}>{block.count}</Badge>
+                </div>
+                <p className="mt-1 truncate text-xs text-muted-foreground">
+                  {block.users.length ? block.users.map((user) => user.email ?? "Unknown user").join(", ") : "No users blocked here."}
+                </p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Failed generations</CardTitle>
+            <CardDescription>Recent failed Beta tasks that may block user activation.</CardDescription>
+            <CardAction><AlertTriangleIcon /></CardAction>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[36rem] text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="p-2">Updated</th>
+                  <th className="p-2">User</th>
+                  <th className="p-2">Workflow</th>
+                  <th className="p-2">Error</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.monitoring.failedGenerations ?? []).map((task) => (
+                  <tr className="border-b align-top" key={task.id}>
+                    <td className="whitespace-nowrap p-2">{formatDate(task.updatedAt)}</td>
+                    <td className="p-2">{task.userEmail ?? "-"}</td>
+                    <td className="p-2"><Badge variant="outline">{task.taskType}</Badge></td>
+                    <td className="max-w-[24rem] whitespace-pre-wrap p-2">{task.error}</td>
+                  </tr>
+                ))}
+                {!data?.monitoring.failedGenerations.length ? (
+                  <tr><td className="p-3 text-muted-foreground" colSpan={4}>No failed Beta generations in the recent task window.</td></tr>
+                ) : null}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent error logs</CardTitle>
+            <CardDescription>Provider, task, and generation errors surfaced from system logs.</CardDescription>
+            <CardAction><AlertTriangleIcon /></CardAction>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            <table className="w-full min-w-[36rem] text-sm">
+              <thead>
+                <tr className="border-b text-left text-muted-foreground">
+                  <th className="p-2">Time</th>
+                  <th className="p-2">Event</th>
+                  <th className="p-2">User</th>
+                  <th className="p-2">Message</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data?.monitoring.recentErrors ?? []).map((log) => (
+                  <tr className="border-b align-top" key={log.id}>
+                    <td className="whitespace-nowrap p-2">{formatDate(log.createdAt)}</td>
+                    <td className="p-2"><Badge variant="outline">{log.event}</Badge></td>
+                    <td className="p-2">{log.userEmail ?? "-"}</td>
+                    <td className="max-w-[24rem] whitespace-pre-wrap p-2">{log.message}</td>
+                  </tr>
+                ))}
+                {!data?.monitoring.recentErrors.length ? (
+                  <tr><td className="p-3 text-muted-foreground" colSpan={4}>No recent error logs for Beta users.</td></tr>
+                ) : null}
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-[20rem_1fr_1fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle>Feedback categories</CardTitle>
+            <CardDescription>Founder notes grouped by decision type.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {(data?.monitoring.feedbackLoop.categories ?? []).map((item) => (
+              <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/60 px-3 py-2" key={item.category}>
+                <span className="text-sm text-muted-foreground">{item.category}</span>
+                <span className="text-sm font-semibold">{item.count}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Biggest pain points</CardTitle>
+            <CardDescription>Bugs, needs, and high-priority notes to review after each test.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {(data?.monitoring.feedbackLoop.biggestPainPoints ?? []).map((item, index) => (
+              <div className="rounded-lg border bg-background/60 p-3" key={`${item.note}-${index}`}>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <Badge variant="outline">{item.category}</Badge>
+                  <Badge variant={statusVariant(item.priority)}>{item.priority}</Badge>
+                  <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{item.note}</p>
+              </div>
+            ))}
+            {!data?.monitoring.feedbackLoop.biggestPainPoints.length ? <p className="text-sm text-muted-foreground">No pain-point notes yet.</p> : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Feature & payment signals</CardTitle>
+            <CardDescription>Most wanted capabilities and willingness-to-pay evidence.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {(data?.monitoring.feedbackLoop.mostWantedCapabilities ?? []).map((item, index) => (
+              <div className="rounded-lg border bg-background/60 p-3" key={`feature-${index}`}>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <Badge variant={statusVariant(item.priority)}>{item.priority}</Badge>
+                  <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{item.note}</p>
+              </div>
+            ))}
+            {(data?.monitoring.feedbackLoop.willingnessToPaySignals ?? []).map((item, index) => (
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 dark:border-emerald-950 dark:bg-emerald-950/20" key={`pay-${index}`}>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <Badge variant="secondary">{item.source}</Badge>
+                  <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{item.note}</p>
+              </div>
+            ))}
+            {!data?.monitoring.feedbackLoop.mostWantedCapabilities.length && !data?.monitoring.feedbackLoop.willingnessToPaySignals.length ? (
+              <p className="text-sm text-muted-foreground">No feature or payment signals yet.</p>
+            ) : null}
           </CardContent>
         </Card>
       </section>

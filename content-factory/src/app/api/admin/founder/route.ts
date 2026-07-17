@@ -31,8 +31,11 @@ type EventRow = {
 type TaskRow = {
   id: string;
   user_id: string | null;
+  topic: string | null;
+  title: string | null;
   task_type: string | null;
   status: string;
+  error: string | null;
   credits_charged: number | null;
   duration_ms: number | null;
   created_at: string;
@@ -103,6 +106,16 @@ type ReviewNoteRow = {
   updated_at: string;
 };
 
+type LogRow = {
+  id: string;
+  level: string;
+  event: string;
+  user_id: string | null;
+  task_id: string | null;
+  metadata: JsonRecord | null;
+  created_at: string;
+};
+
 const REVIEW_CATEGORIES = ["feedback", "need", "bug", "feature_request", "business_signal"] as const;
 const REVIEW_PRIORITIES = ["low", "medium", "high"] as const;
 const REVIEW_STATUSES = ["open", "reviewing", "resolved"] as const;
@@ -153,6 +166,18 @@ function workflowType(task: TaskRow) {
   return task.task_type ?? "unknown";
 }
 
+function feedbackCategoryLabel(category: string) {
+  if (category === "feature_request") return "Feature Request";
+  if (category === "business_signal") return "Business Signal";
+  if (category === "bug") return "Bug";
+  if (category === "need") return "Need";
+  return "User Feedback";
+}
+
+function userLabel(profile?: ProfileRow | null) {
+  return profile?.email ?? "Unknown user";
+}
+
 function firstCompletedAt(events: EventRow[], tasks: TaskRow[]) {
   return (
     minDate(events.filter((event) => event.event_name === "first_generation_completed" || event.event_name === "task_complete")) ??
@@ -191,20 +216,22 @@ export async function GET(request: Request) {
       cohorts,
       members,
       notes,
+      logs,
     ] = await Promise.all([
       supabase.from("profiles").select("id,email,created_at,updated_at").order("created_at", { ascending: false }).limit(1000),
       supabase.from("beta_invites").select("id,email,invite_code,status,created_at,used_at").order("created_at", { ascending: false }).limit(500),
       supabase.from("product_events").select("user_id,event_name,properties,created_at").order("created_at", { ascending: false }).limit(5000),
-      supabase.from("content_tasks").select("id,user_id,task_type,status,credits_charged,duration_ms,created_at,updated_at").order("created_at", { ascending: false }).limit(5000),
+      supabase.from("content_tasks").select("id,user_id,topic,title,task_type,status,error,credits_charged,duration_ms,created_at,updated_at").order("created_at", { ascending: false }).limit(5000),
       supabase.from("usage_history").select("user_id,provider,model,credits_charged,created_at").order("created_at", { ascending: false }).limit(5000),
       supabase.from("user_feedback").select("user_id,satisfaction,result_quality,use_case,continue_use,status,category,content_feedback,suggestion,created_at").order("created_at", { ascending: false }).limit(1000),
       supabase.from("ai_provider_costs").select("user_id,estimated_cost,credits_used,created_at").order("created_at", { ascending: false }).limit(5000),
       supabase.from("beta_cohorts").select("id,name,target_users,status,description,created_by,created_at,updated_at").order("created_at", { ascending: false }).limit(20),
       supabase.from("beta_cohort_members").select("id,cohort_id,user_id,invite_id,status,note,created_at,updated_at").order("updated_at", { ascending: false }).limit(1000),
       supabase.from("beta_review_notes").select("id,user_id,cohort_id,content_task_id,category,priority,note,status,created_by,created_at,updated_at").order("created_at", { ascending: false }).limit(200),
+      supabase.from("system_logs").select("id,level,event,user_id,task_id,metadata,created_at").eq("level", "error").order("created_at", { ascending: false }).limit(50),
     ]);
 
-    for (const result of [profiles, invites, events, tasks, usage, feedback, costs, cohorts, members, notes]) {
+    for (const result of [profiles, invites, events, tasks, usage, feedback, costs, cohorts, members, notes, logs]) {
       if (result.error) throw result.error;
     }
 
@@ -218,6 +245,7 @@ export async function GET(request: Request) {
     const cohortRows = (cohorts.data ?? []) as CohortRow[];
     const memberRows = (members.data ?? []) as CohortMemberRow[];
     const noteRows = (notes.data ?? []) as ReviewNoteRow[];
+    const logRows = (logs.data ?? []) as LogRow[];
 
     const invitedEmails = new Set(inviteRows.map((invite) => invite.email.toLowerCase()));
     const signupUserIds = new Set(
@@ -253,6 +281,7 @@ export async function GET(request: Request) {
     const betaUsage = usageRows.filter((row) => row.user_id && betaUserIds.has(row.user_id));
     const betaFeedback = feedbackRows.filter((row) => row.user_id && betaUserIds.has(row.user_id));
     const betaCosts = costRows.filter((row) => row.user_id && betaUserIds.has(row.user_id));
+    const betaLogs = logRows.filter((row) => !row.user_id || betaUserIds.has(row.user_id));
 
     const activatedUserIds = new Set<string>();
     const completedUserIds = new Set<string>();
@@ -291,6 +320,92 @@ export async function GET(request: Request) {
     const upgradeClicks = eventRows.filter((event) => event.user_id && betaUserIds.has(event.user_id) && event.event_name === "upgrade_click").length;
     const pricingViews = eventRows.filter((event) => event.user_id && betaUserIds.has(event.user_id) && event.event_name === "pricing_view").length;
     const upgradeFeedback = betaFeedback.filter(hasUpgradeIntent).length;
+    const signupCompletedIds = new Set(
+      eventRows
+        .filter((event) => (event.event_name === "signup_completed" || event.event_name === "signup_complete") && event.user_id && betaUserIds.has(event.user_id))
+        .map((event) => event.user_id as string),
+    );
+    const workspaceCreatedIds = new Set(
+      eventRows
+        .filter((event) => event.event_name === "first_workspace_created" && event.user_id && betaUserIds.has(event.user_id))
+        .map((event) => event.user_id as string),
+    );
+    const generationStartedIds = new Set(
+      eventRows
+        .filter((event) => event.event_name === "first_generation_started" && event.user_id && betaUserIds.has(event.user_id))
+        .map((event) => event.user_id as string),
+    );
+    const feedbackSubmittedIds = new Set(
+      eventRows
+        .filter((event) => event.event_name === "feedback_submitted" && event.user_id && betaUserIds.has(event.user_id))
+        .map((event) => event.user_id as string),
+    );
+    for (const row of betaFeedback) {
+      if (row.user_id) feedbackSubmittedIds.add(row.user_id);
+    }
+    const invitedNotSignedUp = inviteRows
+      .filter((invite) => invite.status === "pending" && !betaProfiles.some((profile) => profile.email?.toLowerCase() === invite.email.toLowerCase()))
+      .map((invite) => ({ email: invite.email, inviteCode: invite.invite_code, since: invite.created_at }));
+    const signedUpNoWorkspace = betaProfiles
+      .filter((profile) => signupCompletedIds.has(profile.id) && !workspaceCreatedIds.has(profile.id))
+      .map((profile) => ({ userId: profile.id, email: profile.email, since: profile.created_at }));
+    const workspaceNoGenerationStarted = betaProfiles
+      .filter((profile) => workspaceCreatedIds.has(profile.id) && !generationStartedIds.has(profile.id))
+      .map((profile) => ({ userId: profile.id, email: profile.email, since: profile.created_at }));
+    const generationStartedNoCompletion = betaProfiles
+      .filter((profile) => generationStartedIds.has(profile.id) && !activatedUserIds.has(profile.id))
+      .map((profile) => ({ userId: profile.id, email: profile.email, since: profile.created_at }));
+    const resultNoFeedback = betaProfiles
+      .filter((profile) => activatedUserIds.has(profile.id) && !feedbackSubmittedIds.has(profile.id))
+      .map((profile) => ({ userId: profile.id, email: profile.email, since: profile.created_at }));
+
+    const failedGenerations = betaTasks
+      .filter((task) => task.status === "failed")
+      .sort((a, b) => toTime(b.updated_at) - toTime(a.updated_at))
+      .slice(0, 10)
+      .map((task) => ({
+        id: task.id,
+        userId: task.user_id,
+        userEmail: task.user_id ? profileById.get(task.user_id)?.email ?? null : null,
+        taskType: task.task_type ?? "unknown",
+        title: task.title ?? task.topic ?? "Untitled task",
+        error: task.error ?? "Unknown failure",
+        updatedAt: task.updated_at,
+      }));
+    const recentErrors = betaLogs.slice(0, 10).map((log) => ({
+      id: log.id,
+      event: log.event,
+      userEmail: log.user_id ? profileById.get(log.user_id)?.email ?? null : null,
+      taskId: log.task_id,
+      message: typeof log.metadata?.error === "string" ? log.metadata.error : typeof log.metadata?.type === "string" ? log.metadata.type : log.event,
+      createdAt: log.created_at,
+    }));
+
+    const reviewNoteCategoryCounts = REVIEW_CATEGORIES.map((category) => ({
+      category: feedbackCategoryLabel(category),
+      count: noteRows.filter((note) => note.category === category).length,
+    }));
+    const feedbackThemes = {
+      mostUsedWorkflow: mostUsedWorkflow ? { name: mostUsedWorkflow[0], count: mostUsedWorkflow[1] } : null,
+      biggestPainPoints: noteRows
+        .filter((note) => note.category === "bug" || note.category === "need" || note.priority === "high")
+        .slice(0, 5)
+        .map((note) => ({ category: feedbackCategoryLabel(note.category), priority: note.priority, note: note.note, status: note.status })),
+      mostWantedCapabilities: noteRows
+        .filter((note) => note.category === "feature_request")
+        .slice(0, 5)
+        .map((note) => ({ priority: note.priority, note: note.note, status: note.status })),
+      willingnessToPaySignals: [
+        ...noteRows
+          .filter((note) => note.category === "business_signal")
+          .slice(0, 5)
+          .map((note) => ({ source: "review_note", priority: note.priority, note: note.note, status: note.status })),
+        ...betaFeedback
+          .filter(hasUpgradeIntent)
+          .slice(0, 5)
+          .map((row) => ({ source: "feedback", priority: "medium", note: `${userLabel(row.user_id ? profileById.get(row.user_id) : null)}: ${row.suggestion ?? row.content_feedback ?? row.category}`, status: row.status })),
+      ].slice(0, 5),
+    };
 
     const enrichedNotes = noteRows.map((note) => ({
       ...note,
@@ -376,10 +491,31 @@ export async function GET(request: Request) {
           open: noteRows.filter((note) => note.status === "open").length,
           reviewing: noteRows.filter((note) => note.status === "reviewing").length,
           resolved: noteRows.filter((note) => note.status === "resolved").length,
-          byCategory: REVIEW_CATEGORIES.map((category) => ({
-            category,
-            count: noteRows.filter((note) => note.category === category).length,
-          })),
+          byCategory: reviewNoteCategoryCounts,
+        },
+        monitoring: {
+          launchChecklist: {
+            inviteToSignup: { passed: inviteRows.length > 0, count: inviteRows.length },
+            signupCompleted: { passed: signupCompletedIds.size > 0, count: signupCompletedIds.size },
+            workspaceCreated: { passed: workspaceCreatedIds.size > 0, count: workspaceCreatedIds.size },
+            firstGenerationStarted: { passed: generationStartedIds.size > 0, count: generationStartedIds.size },
+            firstGenerationCompleted: { passed: activatedUserIds.size > 0, count: activatedUserIds.size },
+            feedbackSubmitted: { passed: feedbackSubmittedIds.size > 0, count: feedbackSubmittedIds.size },
+            founderViewReady: { passed: true, count: 1 },
+          },
+          failedGenerations,
+          recentErrors,
+          blockingPoints: [
+            { stage: "Invited, not signed up", count: invitedNotSignedUp.length, users: invitedNotSignedUp.slice(0, 5) },
+            { stage: "Signed up, no workspace", count: signedUpNoWorkspace.length, users: signedUpNoWorkspace.slice(0, 5) },
+            { stage: "Workspace, no generation", count: workspaceNoGenerationStarted.length, users: workspaceNoGenerationStarted.slice(0, 5) },
+            { stage: "Generation started, not completed", count: generationStartedNoCompletion.length, users: generationStartedNoCompletion.slice(0, 5) },
+            { stage: "Result, no feedback", count: resultNoFeedback.length, users: resultNoFeedback.slice(0, 5) },
+          ],
+          feedbackLoop: {
+            categories: reviewNoteCategoryCounts,
+            ...feedbackThemes,
+          },
         },
         generatedAt: new Date().toISOString(),
       },

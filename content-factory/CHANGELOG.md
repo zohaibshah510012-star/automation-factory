@@ -8,6 +8,7 @@
 - Added `/api/admin/founder` to aggregate Founder Beta Run metrics for invited, registered, activated, completed, first-generation rate, completion rate, Time To First Value, most-used workflow, Credits used, estimated cost, feedback score, result quality, and upgrade-interest signals.
 - Added `/admin/founder` as the Founder View for a 5-user Beta cohort, Demo Invite handoff, recommended Short Drama test workflow, 1/5/10-minute experience goals, and Beta Review Notes.
 - Added Beta Review Notes workflow for feedback, needs, bugs, feature requests, and business signals with `open`, `reviewing`, and `resolved` status tracking.
+- Added Founder Beta monitoring for launch checklist, failed generations, recent error logs, blocking points, feedback categories, pain points, feature requests, and payment signals.
 - Updated production diagnostics, deployment docs, production checklist, final launch checklist, smoke test, and project status to reference `0030_founder_beta_run.sql`.
 - Applied migration `0030_founder_beta_run.sql` to the linked Supabase project and confirmed migrations `0001` through `0030`.
 - Created default remote cohort `Founder Beta Cohort 1` with target users `5`.
