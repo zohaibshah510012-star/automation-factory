@@ -41,6 +41,7 @@ Production verification for controlled real-customer Beta.
 - Verified Auth/Beta Access against linked Supabase `rfghzowaeqojvnxiqznc` and local production preview `http://127.0.0.1:3001`.
 - Added `docs/BACKUP_PITR_VERIFICATION.md`.
 - Confirmed Backup/PITR Restore remains BLOCKED because Supabase CLI reports `pitr_enabled=false` and `backups=null`.
+- Added `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md` for Supabase Dashboard backup evidence, PITR evidence, restore drill steps, and Beta release gate closure.
 
 ## Not done
 
@@ -54,9 +55,11 @@ Production verification for controlled real-customer Beta.
 
 Run the production VPS verification pass from a machine with production access:
 
-1. Assign the Backup/PITR owner and create or confirm a pre-Beta Supabase backup.
-2. Enable/verify PITR or complete a non-production restore drill.
-3. Follow `docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md`.
-4. Execute `docs/PRODUCTION_LAUNCH_RUNBOOK.md` on the production VPS.
-5. Run `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md` on the production HTTPS domain.
-6. Invite the first 1-2 controlled Beta users only after all Closed Beta gates pass.
+1. Assign the Backup/PITR owner.
+2. Execute `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md`.
+3. Create or confirm a pre-Beta Supabase backup.
+4. Enable/verify PITR or complete a non-production restore drill.
+5. Follow `docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md`.
+6. Execute `docs/PRODUCTION_LAUNCH_RUNBOOK.md` on the production VPS.
+7. Run `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md` on the production HTTPS domain.
+8. Invite the first 1-2 controlled Beta users only after all Closed Beta gates pass.

@@ -112,6 +112,7 @@ Latest P0 verification:
 
 - Auth/Beta Access: verified for linked Supabase project `rfghzowaeqojvnxiqznc` and local production preview `http://127.0.0.1:3001`. Evidence is recorded in `docs/AUTH_BETA_ACCESS_VERIFICATION.md`.
 - Backup/PITR Restore: remains blocked. Supabase CLI reports `pitr_enabled=false` and `backups=null`; Docker, `pg_dump`, and `DATABASE_URL` are unavailable on this workstation. Evidence and restore plan are recorded in `docs/BACKUP_PITR_VERIFICATION.md`.
+- Supabase Backup Closure Runbook is prepared in `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md`; it must be executed by a Supabase project owner/operator before the Backup Ready and Restore Verified gates can be checked.
 
 Closed Beta gate:
 

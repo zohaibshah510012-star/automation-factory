@@ -16,6 +16,8 @@ Source note: `docs/BETA_P0_EXECUTION_CHECKLIST.md` was requested as input but is
 | Backup/PITR Restore | BLOCKED | Supabase CLI reports `pitr_enabled=false` and `backups=null`; restore evidence is missing. |
 | Closed Beta Gate | BLOCKED | Backup/PITR and production smoke test evidence are incomplete. |
 
+Backup/PITR closure runbook: `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md`.
+
 ## Auth/Beta Access
 
 Status: **VERIFIED for linked Supabase + local production preview**
@@ -109,6 +111,7 @@ Current gap:
 - No PITR status evidence is recorded.
 - No restore verification evidence is recorded.
 - Storage backup status is not verified for production asset durability.
+- Backup closure checklist is prepared in `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md`, but it has not been executed.
 
 ### Restore plan
 
@@ -159,10 +162,13 @@ Preferred production-safe sequence:
 
 Gate decision: **Do not invite Closed Beta users yet.**
 
+Do not update Backup/PITR to READY until the Supabase Dashboard backup checklist and restore drill checklist in `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md` are completed with real evidence.
+
 ## Next execution order
 
-1. Assign Auth/Beta Access owner and execute the production invite flow.
-2. Assign Backup owner and create a pre-Beta Supabase backup.
-3. Verify PITR/restore path without destructive production changes.
-4. Run `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md` on the production domain.
-5. Create exactly one controlled Beta user only after the first four gates pass.
+1. Assign Backup/PITR owner.
+2. Execute `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md`.
+3. Create or confirm a pre-Beta Supabase backup.
+4. Verify PITR or complete a non-production restore drill.
+5. Run `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md` on the production domain.
+6. Invite controlled Beta users only after all Closed Beta gates pass.

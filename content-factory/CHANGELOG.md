@@ -2,6 +2,15 @@
 
 ## 2026-07-17
 
+### Supabase Backup PITR Closure Runbook
+
+- Added `docs/SUPABASE_BACKUP_CLOSURE_RUNBOOK.md`.
+- Documented the Supabase Dashboard Backup Checklist with project name, backup status, PITR status, creation time, operator, and backup location evidence fields.
+- Documented the Restore Drill Checklist for isolated restore environment, database restore, migration verification, core table verification, and post-restore health checks.
+- Listed required restore verification tables: `profiles`, `workspaces`, `content_tasks`, `assets`, `credit_transactions`, `usage_history`, and `founder_customer_projects`.
+- Updated `docs/BETA_P0_EXECUTION_STATUS.md` to reference the closure runbook while keeping Backup/PITR Restore as `BLOCKED` until real backup and restore evidence exists.
+- Preserved AI Runtime, Workflow Engine, Billing Core, Credits Core, and database schema.
+
 ### Close Beta P0 Readiness Gates
 
 - Added `docs/AUTH_BETA_ACCESS_VERIFICATION.md`.
