@@ -12,6 +12,36 @@ The current product direction is to make Automation Factory usable as a first-se
 
 `6b949b510e893d95428fbd1b6d0c6673921c832c`
 
+## Founder Revenue Validation execution update
+
+The first Founder Demo Case has been created and executed against the linked Supabase project.
+
+Execution result:
+
+- Demo customer/brand: `Founder Demo`
+- Project name: `AI Marketing Content Package`
+- Project status: `ready_to_sell`
+- Primary workflow: `drama`
+- Linked task IDs: `2f94261d-f966-4689-ba9f-6fd34e82686d` plus 8 scene-level image/video child tasks
+- Generated assets: 16 total
+  - 8 image assets
+  - 8 video preview assets
+- Distribution package: `/api/distributions/d2354a6e-d99b-42e6-88ca-572f578c2e3b/export`
+- Credits used: `580`
+- Estimated AI cost: `5.8`
+
+Verification:
+
+- Supabase migrations are applied through `0032_founder_revenue_validation.sql`.
+- `/admin/revenue` returns `200` in local production preview.
+- `/api/health` returns `ok` with database `true` in local production preview.
+
+Business outcome:
+
+- Automation Factory now has a concrete Founder case study that can be shown to a first customer as a commercial delivery sample.
+- The case uses only existing workflows, image/video local fallbacks, and the distribution MVP export path.
+- No new AI capability, provider, or workflow was added.
+
 ## Founder Revenue Validation status
 
 This phase shifts the validation goal from waiting for external Beta users to using the Founder as the first real customer. The objective is to produce and track one commercial case that can be used to sell the first customer.

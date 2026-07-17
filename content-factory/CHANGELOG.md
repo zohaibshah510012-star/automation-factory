@@ -10,6 +10,17 @@
 - Added a Founder Demo Case flow that records product information, commercial need, Marketing Strategy, Script, Image Assets, Video Preview, and Distribution Package as a sellable delivery path.
 - Preserved existing Beta, AI Runtime, Workflow Engine, Billing Core, Credits Core, Provider, and Workflow behavior.
 
+### Founder Revenue Validation Execution
+
+- Applied and confirmed Supabase migrations through `0032_founder_revenue_validation.sql`.
+- Created the first Founder Demo Case for `Founder Demo` / `AI Marketing Content Package`.
+- Ran the existing Short Drama workflow as the commercial demo production path.
+- Generated and linked 16 assets: 8 image assets and 8 video preview assets.
+- Created the Distribution MVP export package at `/api/distributions/d2354a6e-d99b-42e6-88ca-572f578c2e3b/export`.
+- Backfilled `founder_customer_projects` with linked task IDs, generated assets, deliverables, Credits used, estimated AI cost, and result notes.
+- Marked the Founder Demo Case as `ready_to_sell`.
+- Verified `/admin/revenue` returns `200` and `/api/health` reports database `true` in local production preview.
+
 ### Founder Beta Cohort 1 Execution
 
 - Ran the initial clean cohort monitoring check for `Founder Beta Cohort 1`.
