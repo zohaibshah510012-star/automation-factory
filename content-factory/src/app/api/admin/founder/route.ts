@@ -86,7 +86,7 @@ type CohortMemberRow = {
   cohort_id: string;
   user_id: string | null;
   invite_id: string | null;
-  status: string;
+  status: "invited" | "signup" | "workspace" | "first_generation" | "result" | "feedback" | "completed" | "churned";
   note: string | null;
   created_at: string;
   updated_at: string;
@@ -120,6 +120,7 @@ const REVIEW_CATEGORIES = ["feedback", "need", "bug", "feature_request", "busine
 const REVIEW_PRIORITIES = ["low", "medium", "high"] as const;
 const REVIEW_STATUSES = ["open", "reviewing", "resolved"] as const;
 const COHORT_STATUSES = ["draft", "running", "completed"] as const;
+const COHORT_MEMBER_STATUSES = ["invited", "signup", "workspace", "first_generation", "result", "feedback", "completed", "churned"] as const;
 
 function toTime(value?: string | null) {
   return value ? new Date(value).getTime() : 0;
@@ -162,6 +163,10 @@ function isReviewStatus(value: unknown): value is ReviewNoteRow["status"] {
 
 function isCohortStatus(value: unknown): value is CohortRow["status"] {
   return COHORT_STATUSES.includes(value as CohortRow["status"]);
+}
+
+function isCohortMemberStatus(value: unknown): value is CohortMemberRow["status"] {
+  return COHORT_MEMBER_STATUSES.includes(value as CohortMemberRow["status"]);
 }
 
 function hasUpgradeIntent(feedback: FeedbackRow) {
@@ -254,6 +259,22 @@ export async function GET(request: Request) {
     const noteRows = (notes.data ?? []) as ReviewNoteRow[];
     const logRows = (logs.data ?? []) as LogRow[];
 
+    const profileById = new Map(profileRows.map((profile) => [profile.id, profile]));
+    const inviteById = new Map(inviteRows.map((invite) => [invite.id, invite]));
+    const activeCohortRow = cohortRows.find((cohort) => cohort.status === "running") ?? cohortRows[0] ?? null;
+    const activeCohortMembers = activeCohortRow ? memberRows.filter((member) => member.cohort_id === activeCohortRow.id) : [];
+    const activeCohortMemberUserIds = new Set(activeCohortMembers.map((member) => member.user_id).filter(Boolean) as string[]);
+    const activeCohortMemberInviteIds = new Set(activeCohortMembers.map((member) => member.invite_id).filter(Boolean) as string[]);
+    const activeCohortInviteEmails = new Set(
+      activeCohortMembers
+        .map((member) => (member.invite_id ? inviteById.get(member.invite_id)?.email.toLowerCase() : null))
+        .filter(Boolean) as string[],
+    );
+    for (const profile of profileRows) {
+      const email = profile.email?.toLowerCase();
+      if (email && activeCohortInviteEmails.has(email)) activeCohortMemberUserIds.add(profile.id);
+    }
+
     const invitedEmails = new Set(inviteRows.map((invite) => invite.email.toLowerCase()));
     const signupUserIds = new Set(
       eventRows
@@ -261,14 +282,28 @@ export async function GET(request: Request) {
         .map((event) => event.user_id)
         .filter(Boolean) as string[],
     );
-    const cohortUserIds = new Set(memberRows.map((member) => member.user_id).filter(Boolean) as string[]);
-    const betaProfiles = profileRows.filter((profile) => {
+    const betaCandidateProfiles = profileRows.filter((profile) => {
       const email = profile.email?.toLowerCase();
-      return (email && invitedEmails.has(email)) || signupUserIds.has(profile.id) || cohortUserIds.has(profile.id);
+      return (email && invitedEmails.has(email)) || signupUserIds.has(profile.id) || activeCohortMemberUserIds.has(profile.id);
     });
+    const betaProfiles = activeCohortMembers.length
+      ? profileRows.filter((profile) => activeCohortMemberUserIds.has(profile.id))
+      : [];
     const betaUserIds = new Set(betaProfiles.map((profile) => profile.id));
-    const profileById = new Map(profileRows.map((profile) => [profile.id, profile]));
-    const inviteById = new Map(inviteRows.map((invite) => [invite.id, invite]));
+    const cohortCandidateUsers = betaCandidateProfiles
+      .map((profile) => {
+        const invite = inviteRows.find((row) => row.email.toLowerCase() === profile.email?.toLowerCase());
+        return {
+          userId: profile.id,
+          email: profile.email,
+          registeredAt: profile.created_at,
+          inviteId: invite?.id ?? null,
+          inviteStatus: invite?.status ?? null,
+          isMember: activeCohortMemberUserIds.has(profile.id) || (invite?.id ? activeCohortMemberInviteIds.has(invite.id) : false),
+        };
+      })
+      .sort((a, b) => Number(a.isMember) - Number(b.isMember) || b.registeredAt.localeCompare(a.registeredAt))
+      .slice(0, 50);
 
     const eventsByUser = new Map<string, EventRow[]>();
     for (const event of eventRows) {
@@ -288,7 +323,11 @@ export async function GET(request: Request) {
     const betaUsage = usageRows.filter((row) => row.user_id && betaUserIds.has(row.user_id));
     const betaFeedback = feedbackRows.filter((row) => row.user_id && betaUserIds.has(row.user_id));
     const betaCosts = costRows.filter((row) => row.user_id && betaUserIds.has(row.user_id));
-    const betaLogs = logRows.filter((row) => !row.user_id || betaUserIds.has(row.user_id));
+    const betaTaskIds = new Set(betaTasks.map((task) => task.id));
+    const betaLogs = logRows.filter((row) => (row.user_id ? betaUserIds.has(row.user_id) : Boolean(row.task_id && betaTaskIds.has(row.task_id))));
+    const cohortNoteRows = noteRows.filter(
+      (note) => note.cohort_id === activeCohortRow?.id || Boolean(note.user_id && betaUserIds.has(note.user_id)),
+    );
 
     const activatedUserIds = new Set<string>();
     const completedUserIds = new Set<string>();
@@ -350,9 +389,15 @@ export async function GET(request: Request) {
     for (const row of betaFeedback) {
       if (row.user_id) feedbackSubmittedIds.add(row.user_id);
     }
-    const invitedNotSignedUp = inviteRows
-      .filter((invite) => invite.status === "pending" && !betaProfiles.some((profile) => profile.email?.toLowerCase() === invite.email.toLowerCase()))
-      .map((invite) => ({ email: invite.email, inviteCode: invite.invite_code, since: invite.created_at }));
+    const invitedNotSignedUp = activeCohortMembers
+      .filter((member) => {
+        const invite = member.invite_id ? inviteById.get(member.invite_id) : null;
+        return Boolean(invite && !member.user_id && !betaProfiles.some((profile) => profile.email?.toLowerCase() === invite.email.toLowerCase()));
+      })
+      .map((member) => {
+        const invite = member.invite_id ? inviteById.get(member.invite_id) : null;
+        return { email: invite?.email ?? null, inviteCode: invite?.invite_code ?? null, since: member.created_at };
+      });
     const signedUpNoWorkspace = betaProfiles
       .filter((profile) => signupCompletedIds.has(profile.id) && !workspaceCreatedIds.has(profile.id))
       .map((profile) => ({ userId: profile.id, email: profile.email, since: profile.created_at }));
@@ -392,7 +437,7 @@ export async function GET(request: Request) {
 
     const reviewNoteCategoryCounts = REVIEW_CATEGORIES.map((category) => ({
       category: feedbackCategoryLabel(category),
-      count: noteRows.filter((note) => note.category === category).length,
+      count: cohortNoteRows.filter((note) => note.category === category).length,
     }));
     const qualityIssues = [
       ...betaFeedback
@@ -404,7 +449,7 @@ export async function GET(request: Request) {
           note: `${userLabel(row.user_id ? profileById.get(row.user_id) : null)}: ${row.content_feedback ?? row.suggestion ?? row.category}`,
           status: row.status,
         })),
-      ...noteRows
+      ...cohortNoteRows
         .filter((note) => note.category === "feedback" && /quality|wrong|bad|poor|output|result|不准|质量|效果|错误|差/.test(note.note.toLowerCase()))
         .slice(0, 5)
         .map((note) => ({
@@ -416,16 +461,16 @@ export async function GET(request: Request) {
     ].slice(0, 5);
     const feedbackThemes = {
       mostUsedWorkflow: mostUsedWorkflow ? { name: mostUsedWorkflow[0], count: mostUsedWorkflow[1] } : null,
-      biggestPainPoints: noteRows
+      biggestPainPoints: cohortNoteRows
         .filter((note) => note.category === "bug" || note.category === "need" || note.priority === "high")
         .slice(0, 5)
         .map((note) => ({ category: feedbackCategoryLabel(note.category), priority: note.priority, note: note.note, status: note.status })),
-      mostWantedCapabilities: noteRows
+      mostWantedCapabilities: cohortNoteRows
         .filter((note) => note.category === "feature_request")
         .slice(0, 5)
         .map((note) => ({ priority: note.priority, note: note.note, status: note.status })),
       willingnessToPaySignals: [
-        ...noteRows
+        ...cohortNoteRows
           .filter((note) => note.category === "business_signal")
           .slice(0, 5)
           .map((note) => ({ source: "review_note", priority: note.priority, note: note.note, status: note.status })),
@@ -437,7 +482,7 @@ export async function GET(request: Request) {
       qualityIssues,
     };
 
-    const enrichedNotes = noteRows.map((note) => ({
+    const enrichedNotes = cohortNoteRows.map((note) => ({
       ...note,
       userEmail: note.user_id ? profileById.get(note.user_id)?.email ?? null : null,
       cohortName: note.cohort_id ? cohortRows.find((cohort) => cohort.id === note.cohort_id)?.name ?? null : null,
@@ -445,10 +490,20 @@ export async function GET(request: Request) {
 
     const cohortsWithProgress = cohortRows.map((cohort) => {
       const cohortMembers = memberRows.filter((member) => member.cohort_id === cohort.id);
-      const invited = cohortMembers.filter((member) => member.status === "invited").length || inviteRows.filter((invite) => invite.status !== "revoked").length;
-      const signup = cohortMembers.filter((member) => ["signup", "workspace", "first_generation", "result", "feedback", "completed"].includes(member.status)).length || betaProfiles.length;
-      const firstGeneration = cohortMembers.filter((member) => ["first_generation", "result", "feedback", "completed"].includes(member.status)).length || activatedUserIds.size;
-      const feedbackCount = cohortMembers.filter((member) => ["feedback", "completed"].includes(member.status)).length || completedUserIds.size;
+      const memberHasEvent = (member: CohortMemberRow, eventNames: string[]) => {
+        const inviteEmail = member.invite_id ? inviteById.get(member.invite_id)?.email.toLowerCase() : null;
+        const userId = member.user_id ?? (inviteEmail ? profileRows.find((row) => row.email?.toLowerCase() === inviteEmail)?.id : null);
+        return Boolean(userId && eventRows.some((event) => event.user_id === userId && eventNames.includes(event.event_name)));
+      };
+      const memberHasCompletedTask = (member: CohortMemberRow) => {
+        const inviteEmail = member.invite_id ? inviteById.get(member.invite_id)?.email.toLowerCase() : null;
+        const userId = member.user_id ?? (inviteEmail ? profileRows.find((row) => row.email?.toLowerCase() === inviteEmail)?.id : null);
+        return Boolean(userId && taskRows.some((task) => task.user_id === userId && task.status === "completed"));
+      };
+      const invited = cohortMembers.length;
+      const signup = cohortMembers.filter((member) => ["signup", "workspace", "first_generation", "result", "feedback", "completed"].includes(member.status) || memberHasEvent(member, ["signup_completed", "signup_complete"])).length;
+      const firstGeneration = cohortMembers.filter((member) => ["first_generation", "result", "feedback", "completed"].includes(member.status) || memberHasEvent(member, ["first_generation_completed", "task_complete"]) || memberHasCompletedTask(member)).length;
+      const feedbackCount = cohortMembers.filter((member) => ["feedback", "completed"].includes(member.status) || memberHasEvent(member, ["feedback_submitted"])).length;
       return {
         ...cohort,
         members: cohortMembers.map((member) => ({
@@ -460,7 +515,7 @@ export async function GET(request: Request) {
           signup,
           firstGeneration,
           feedback: feedbackCount,
-          completed: cohortMembers.filter((member) => member.status === "completed").length || completedUserIds.size,
+          completed: cohortMembers.filter((member) => member.status === "completed").length,
           targetUsers: cohort.target_users,
         },
       };
@@ -477,10 +532,16 @@ export async function GET(request: Request) {
     return NextResponse.json(
       {
         setup: {
+          activeCohortId: activeCohort?.id ?? null,
+          activeCohortName: activeCohort?.name ?? null,
           targetUsers,
           hasActiveCohort: Boolean(activeCohort),
+          memberCount: activeCohortMembers.length,
+          dataScope: "active_cohort_members",
+          isCleanCohort: activeCohortMembers.length > 0,
           recommendedWorkflow: "short_drama",
           demoInvitePath: "/admin/beta",
+          cohortCandidateUsers,
           userJourney: ["Invite", "Signup", "Workspace", "First Generation", "Result", "Feedback"],
           timingGoals: [
             { label: "1 minute", goal: "User understands they should click Create and choose AI Short Drama." },
@@ -491,7 +552,7 @@ export async function GET(request: Request) {
         cohorts: cohortsWithProgress,
         metrics: {
           betaUsers: {
-            invited: inviteRows.filter((invite) => invite.status !== "revoked").length,
+            invited: activeCohortMembers.length,
             activated: activatedUserIds.size,
             completed: completedUserIds.size,
             registered: betaProfiles.length,
@@ -518,9 +579,9 @@ export async function GET(request: Request) {
         },
         reviewNotes: {
           notes: enrichedNotes,
-          open: noteRows.filter((note) => note.status === "open").length,
-          reviewing: noteRows.filter((note) => note.status === "reviewing").length,
-          resolved: noteRows.filter((note) => note.status === "resolved").length,
+          open: cohortNoteRows.filter((note) => note.status === "open").length,
+          reviewing: cohortNoteRows.filter((note) => note.status === "reviewing").length,
+          resolved: cohortNoteRows.filter((note) => note.status === "resolved").length,
           byCategory: reviewNoteCategoryCounts,
         },
         monitoring: {
@@ -532,7 +593,7 @@ export async function GET(request: Request) {
             creditsConsumed: creditsUsed,
           },
           launchChecklist: {
-            inviteToSignup: { passed: inviteRows.length > 0, count: inviteRows.length },
+            inviteToSignup: { passed: activeCohortMembers.length > 0, count: activeCohortMembers.length },
             signupCompleted: { passed: signupCompletedIds.size > 0, count: signupCompletedIds.size },
             workspaceCreated: { passed: workspaceCreatedIds.size > 0, count: workspaceCreatedIds.size },
             firstGenerationStarted: { passed: generationStartedIds.size > 0, count: generationStartedIds.size },
@@ -613,6 +674,60 @@ export async function POST(request: Request) {
       if (error || !data) throw error ?? new Error("Unable to create review note");
       await audit(admin.id, "beta_review_note_created", "beta_review_note", data.id, { category, priority });
       return NextResponse.json({ note: data }, { status: 201, headers: { "Cache-Control": "no-store" } });
+    }
+
+    if (action === "bind_cohort_member") {
+      const cohortId = cleanText(body.cohortId, 64);
+      const email = cleanText(body.email, 320).toLowerCase();
+      const note = cleanText(body.note, 1000) || null;
+      if (!cohortId || !email || !email.includes("@")) return NextResponse.json({ error: "Valid cohortId and email are required" }, { status: 400 });
+      const status = isCohortMemberStatus(body.status) ? body.status : "invited";
+      const { data: cohort, error: cohortError } = await supabase.from("beta_cohorts").select("id").eq("id", cohortId).maybeSingle();
+      if (cohortError) throw cohortError;
+      if (!cohort) return NextResponse.json({ error: "Cohort not found" }, { status: 404 });
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("id,email")
+        .ilike("email", email)
+        .limit(1)
+        .maybeSingle();
+      if (profileError) throw profileError;
+      const { data: invite, error: inviteError } = await supabase
+        .from("beta_invites")
+        .select("id,email,status")
+        .ilike("email", email)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (inviteError) throw inviteError;
+      if (!profile && !invite) return NextResponse.json({ error: "No profile or invite found for this email" }, { status: 404 });
+
+      const userId = typeof profile?.id === "string" ? profile.id : null;
+      const inviteId = typeof invite?.id === "string" ? invite.id : null;
+      const existingQueries = [];
+      if (userId) existingQueries.push(supabase.from("beta_cohort_members").select("id").eq("cohort_id", cohortId).eq("user_id", userId).maybeSingle());
+      if (inviteId) existingQueries.push(supabase.from("beta_cohort_members").select("id").eq("cohort_id", cohortId).eq("invite_id", inviteId).maybeSingle());
+      const existingResults = await Promise.all(existingQueries);
+      for (const result of existingResults) {
+        if (result.error) throw result.error;
+      }
+      const existing = existingResults.map((result) => result.data).find(Boolean);
+      const payload = {
+        cohort_id: cohortId,
+        user_id: userId,
+        invite_id: inviteId,
+        status,
+        note,
+        updated_at: new Date().toISOString(),
+      };
+      const query = existing
+        ? supabase.from("beta_cohort_members").update(payload).eq("id", existing.id).select().single()
+        : supabase.from("beta_cohort_members").insert(payload).select().single();
+      const { data, error } = await query;
+      if (error || !data) throw error ?? new Error("Unable to bind cohort member");
+      await audit(admin.id, "beta_cohort_member_bound", "beta_cohort_member", data.id, { cohortId, email, status });
+      return NextResponse.json({ member: data }, { status: existing ? 200 : 201, headers: { "Cache-Control": "no-store" } });
     }
 
     return NextResponse.json({ error: "Unsupported founder action" }, { status: 400 });

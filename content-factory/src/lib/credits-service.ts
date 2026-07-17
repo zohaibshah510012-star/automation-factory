@@ -59,6 +59,9 @@ export async function commitCredits(task: ContentTask, pricing?: { provider: str
   }
   if (existing) return { usageHistoryId: existing.id as string };
 
+  const startedAt = task.startedAt ?? task.createdAt;
+  const completedAt = task.completedAt ?? task.updatedAt;
+  const durationMs = task.durationMs ?? Math.max(0, new Date(completedAt).getTime() - new Date(startedAt).getTime());
   const { data: usage, error: usageError } = await supabase.from("usage_history").insert({
       user_id: task.userId,
       content_task_id: task.id,
@@ -66,6 +69,7 @@ export async function commitCredits(task: ContentTask, pricing?: { provider: str
       provider: pricing?.provider ?? null,
       model: pricing?.model ?? null,
       credits_charged: task.creditsCharged ?? 0,
+      duration_ms: durationMs,
     }).select("id").single();
   if (usageError) {
     console.error("[automation-factory] usage_history_write_failed", { taskId: task.id, message: usageError.message });

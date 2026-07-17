@@ -4,13 +4,57 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Founder Beta Execution - support the first 5 real Beta users in a live operating loop, capture activation evidence, monitor P0/P1 blockers, and turn feedback into product/business decisions.
+Founder Beta Cohort Data Cleanup - isolate real Founder Beta Cohort 1 metrics from historical smoke/dev data, bind real Beta users explicitly, and ensure new generation tasks record usable duration data.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
 ## Latest verified commit before this report
 
-`2e41dc5024e9b155a5d4c7b5c3f1230aa07b0512`
+`2033e7094494d0f29ccbf3137760b20067e22af4`
+
+## Founder Beta Cohort Data Cleanup status
+
+This sprint fixes the highest current Beta operating risk: historical smoke/dev rows were mixed into Founder View metrics, which made activation, completion, workflow usage, latency, Credits, and feedback signals unsafe for product decisions.
+
+What changed:
+
+- Added migration `0031_founder_beta_data_cleanup.sql`.
+- Remote Supabase migrations now run from `0001` through `0031`.
+- `content_tasks` now has additive `started_at` and `completed_at` fields for new generation observability.
+- New text/content, image, and video tasks now write `duration_ms` into `content_tasks`.
+- New usage records now write `usage_history.duration_ms` from the completed task timing.
+- `/api/admin/founder` now defaults to `active_cohort_members` scope instead of mixing all invite/profile/smoke data.
+- `/api/admin/founder` now exposes candidate users and supports binding a real Beta user into `beta_cohort_members` by email.
+- `/admin/founder` now shows a cohort-only warning when no real users are bound.
+- `/admin/founder` now includes a small binding panel for Founder Beta users and an Active Cohort Members list.
+- Founder review notes and feedback signals are now scoped to the active cohort or bound users.
+
+Current Founder Beta Cohort 1 data:
+
+- Cohort: `Founder Beta Cohort 1`
+- Target users: `5`
+- Status: `running`
+- Members: `0`
+- Binding result: no users were auto-bound because the repository/database does not contain an authoritative list of the first 5 real external Beta users.
+
+Decision posture:
+
+- Historical data was preserved.
+- Existing Admin Analytics and broader Beta Insights remain available.
+- Founder View is now intentionally stricter: until the 5 real users are bound, cohort-only metrics should show an empty or near-empty experiment instead of polluted historical activity.
+
+Validation:
+
+- `supabase db push`: applied `0031_founder_beta_data_cleanup.sql`.
+- `supabase migration list`: confirmed `0001` through `0031` local and remote.
+- Remote check confirmed `content_tasks.started_at`, `content_tasks.completed_at`, and `content_tasks.duration_ms` are readable.
+- `pnpm lint`: passed.
+- `pnpm exec tsc --noEmit`: passed.
+- `pnpm build`: passed.
+
+Next operating step:
+
+Bind the first 5 real Beta users in `/admin/founder`, then run a clean 48-72 hour Founder Beta cycle before choosing the next product direction.
 
 ## Founder Beta Execution status
 
@@ -38,6 +82,70 @@ Latest remote Beta data snapshot:
 - Credits consumed: `4445`.
 
 Observed failed tasks are historical Beta/dev smoke data, mainly OpenAI image timeouts, insufficient Credits, and older provider-configuration failures. These are now visible in `/admin/founder` and do not introduce a new P0/P1 code blocker for the current local fallback Beta path.
+
+## Founder Beta Operation Cycle snapshot
+
+This operation cycle is monitoring-only. No new product capability, provider, workflow, AI runtime change, Billing Core change, Credits core change, or architecture refactor was introduced.
+
+Current remote Beta cohort:
+
+- Cohort: `Founder Beta Cohort 1`
+- Target users: `5`
+- Status: `running`
+- Cohort member rows: `0`
+- Current invite rows: `18`
+- Invite status: `16 used`, `2 pending`
+
+Current funnel snapshot from invited profiles and product events:
+
+- Signup users: `16`
+- Workspace users: `4`
+- First generation started users: `14`
+- First generation completed users: `11`
+- Feedback users: `3`
+- Activation Rate: `61.1%`
+- First Generation Rate: `68.8%`
+- Task Completion Rate: `95%`
+- Feedback Rate after first generation: `27.3%`
+- Average Time To First Value: `0.5 minutes`
+
+Current workflow usage among invited-profile tasks:
+
+- `image`: `19`
+- `video`: `15`
+- `short_video_script`: `3`
+- `drama`: `3`
+
+Current system stability snapshot:
+
+- Invited-profile tasks: `40`
+- Completed tasks: `38`
+- Failed tasks: `2`
+- Provider/system error logs visible in monitoring: `15`
+- Credits consumed by invited-profile usage: `2615`
+- Average recorded generation latency: `0ms` because many historical tasks do not have `duration_ms` populated.
+- P95 recorded generation latency: `0ms` for the same reason.
+
+Current feedback snapshot:
+
+- Feedback rows: `5`
+- Average satisfaction: `5/5`
+- Average result quality: `4/5`
+- Quality issue rows: `0`
+- Payment signals: `1`
+- Captured use case: Beta dry run short drama ad workflow.
+
+Current blocker assessment:
+
+- P0: none found in the current monitoring snapshot.
+- P1: `2` historical failed invited-profile tasks are still visible; continue monitoring in `/admin/founder`.
+- Data caveat: remote data still includes historical smoke/dev test users. `/admin/founder` intentionally uses a broader Beta-candidate scope for operations, while this snapshot focuses on invited-profile activity. Neither view should be treated as clean external-user evidence until the first 5 manually selected users are tracked as cohort members.
+
+Decision posture:
+
+- Do not add new features yet.
+- Continue the current 5-user Beta operation cycle.
+- The next product decision should wait for clean cohort data from the manually selected users.
 
 ## Founder Beta Run status
 

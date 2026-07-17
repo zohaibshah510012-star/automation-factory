@@ -31,15 +31,21 @@ function taskDurationMs(task: ImageTask) {
 
 async function syncImageContentTask(task: ImageTask, patch: Partial<{ status: ContentTask["status"]; error: string | null; creditsCharged: number }>) {
   const supabase = await requireStore();
+  const status = patch.status ?? contentTaskFromImageTask(task).status;
+  const isTerminal = status === "completed" || status === "failed";
+  const durationMs = isTerminal ? taskDurationMs(task) : null;
   const { error } = await supabase.from("content_tasks").upsert({
     id: task.id,
     user_id: task.userId,
     topic: task.prompt,
     brief: null,
     task_type: "image",
-    status: patch.status ?? contentTaskFromImageTask(task).status,
+    status,
     error: patch.error ?? task.error,
     credits_charged: patch.creditsCharged ?? 0,
+    started_at: task.createdAt,
+    completed_at: isTerminal ? task.updatedAt : null,
+    duration_ms: durationMs,
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(`Unable to sync image content task: ${error.message}`);
@@ -97,6 +103,10 @@ export async function runImageTask(taskId: string) {
     const { data: completed, error: completedError } = await supabase.from("image_tasks").update({ status: "completed", provider_name: image.provider, model: image.model, result_url: image.url, result: { url: image.url, provider: image.provider, model: image.model }, metadata: image.metadata ?? {}, updated_at: completedAt }).eq("id", taskId).select().single();
     if (completedError || !completed) throw new Error(`Unable to save image result: ${completedError?.message ?? "unknown error"}`);
     creditTask.creditsCharged = pricing.amount;
+    creditTask.updatedAt = completedAt;
+    creditTask.startedAt = task.createdAt;
+    creditTask.completedAt = completedAt;
+    creditTask.durationMs = taskDurationMs(mapTask(completed as ImageTaskRow));
     const settlement = await commitCredits(creditTask, { provider: image.provider, model: image.model });
     await syncImageContentTask(mapTask(completed as ImageTaskRow), { status: "completed", error: null, creditsCharged: pricing.amount });
     await writeImageAsset(mapTask(completed as ImageTaskRow), image);

@@ -23,7 +23,9 @@ function timestamp() {
 }
 
 function durationMs(task: ContentTask) {
-  return Math.max(0, new Date(task.updatedAt).getTime() - new Date(task.createdAt).getTime());
+  const start = task.startedAt ?? task.createdAt;
+  const end = task.completedAt ?? task.updatedAt;
+  return Math.max(0, new Date(end).getTime() - new Date(start).getTime());
 }
 
 function textGenerationAttribution(pricing?: { provider: string | null; model: string | null }) {
@@ -82,6 +84,9 @@ type DatabaseTask = {
   script: string | null;
   storyboard: unknown;
   error: string | null;
+  duration_ms?: number | null;
+  started_at?: string | null;
+  completed_at?: string | null;
   created_at: string;
   updated_at: string;
   assets?: { id: string; type: "image" | "voice" | "video"; name: string; url: string; provider: string }[];
@@ -107,12 +112,17 @@ function taskFromDatabase(row: DatabaseTask): ContentTask {
     error: row.error ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    startedAt: row.started_at ?? undefined,
+    completedAt: row.completed_at ?? undefined,
+    durationMs: row.duration_ms ?? undefined,
   };
 }
 
 async function syncTask(task: ContentTask) {
   const supabase = getSupabaseServerClient();
   if (!supabase) return;
+  const isTerminal = task.status === "completed" || task.status === "failed";
+  const computedDurationMs = isTerminal ? task.durationMs ?? durationMs(task) : task.durationMs ?? null;
 
   await supabase.from("content_tasks").upsert({
     id: task.id,
@@ -128,6 +138,9 @@ async function syncTask(task: ContentTask) {
     script: task.script ?? null,
     storyboard: task.storyboard ?? null,
     error: task.error ?? null,
+    started_at: task.startedAt ?? null,
+    completed_at: task.completedAt ?? null,
+    duration_ms: computedDurationMs,
     created_at: task.createdAt,
     updated_at: task.updatedAt,
   });
@@ -232,7 +245,8 @@ export async function runTask(taskId: string) {
   if (!task) return;
 
   task.status = "running";
-  task.updatedAt = timestamp();
+  task.startedAt = task.startedAt ?? timestamp();
+  task.updatedAt = task.startedAt;
   await syncTask(task);
   await syncGenerationStatus(task);
   await getSupabaseServerClient()?.from("system_logs").insert({ level: "info", event: "task_started", task_id: task.id, metadata: { taskType: task.taskType } });
@@ -269,7 +283,9 @@ export async function runTask(taskId: string) {
     }
 
     task.status = "completed";
-    task.updatedAt = timestamp();
+    task.completedAt = timestamp();
+    task.updatedAt = task.completedAt;
+    task.durationMs = durationMs(task);
     const settlement = await commitCredits(task, textAttribution);
     await syncTask(task);
     await syncContentPack(task);
@@ -301,7 +317,9 @@ export async function runTask(taskId: string) {
       ...getOpenAiNetworkDiagnostics(),
     });
     task.error = userFacingGenerationError(error);
-    task.updatedAt = timestamp();
+    task.completedAt = timestamp();
+    task.updatedAt = task.completedAt;
+    task.durationMs = durationMs(task);
     const textAttribution = textGenerationAttribution();
     await refundCredits(task);
     await syncTask(task);

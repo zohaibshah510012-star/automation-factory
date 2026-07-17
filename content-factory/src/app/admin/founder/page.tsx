@@ -26,10 +26,23 @@ import { getSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 type FounderData = {
   setup: {
+    activeCohortId: string | null;
+    activeCohortName: string | null;
     targetUsers: number;
     hasActiveCohort: boolean;
+    memberCount: number;
+    dataScope: string;
+    isCleanCohort: boolean;
     recommendedWorkflow: string;
     demoInvitePath: string;
+    cohortCandidateUsers: Array<{
+      userId: string;
+      email: string | null;
+      registeredAt: string;
+      inviteId: string | null;
+      inviteStatus: string | null;
+      isMember: boolean;
+    }>;
     userJourney: string[];
     timingGoals: Array<{ label: string; goal: string }>;
   };
@@ -47,6 +60,13 @@ type FounderData = {
       completed: number;
       targetUsers: number;
     };
+    members: Array<{
+      id: string;
+      email: string | null;
+      status: string;
+      note: string | null;
+      updated_at: string;
+    }>;
   }>;
   metrics: {
     betaUsers: { invited: number; activated: number; completed: number; registered: number; target: number };
@@ -132,6 +152,12 @@ type NoteForm = {
   note: string;
 };
 
+type BindForm = {
+  email: string;
+  status: "invited" | "signup" | "workspace" | "first_generation" | "result" | "feedback" | "completed" | "churned";
+  note: string;
+};
+
 async function authHeaders() {
   const session = await getSupabaseBrowserClient()?.auth.getSession();
   return { Authorization: `Bearer ${session?.data.session?.access_token ?? ""}` };
@@ -157,6 +183,7 @@ export default function FounderBetaPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [noteForm, setNoteForm] = useState<NoteForm>({ category: "feedback", priority: "medium", note: "" });
+  const [bindForm, setBindForm] = useState<BindForm>({ email: "", status: "invited", note: "" });
   const [targetUsers, setTargetUsers] = useState("5");
 
   async function load() {
@@ -195,6 +222,32 @@ export default function FounderBetaPage() {
     });
     setMessage(response.ok ? "Review note saved." : "Unable to save review note.");
     if (response.ok) setNoteForm({ category: "feedback", priority: "medium", note: "" });
+    await load();
+  }
+
+  async function bindCohortMember(email = bindForm.email) {
+    if (!data?.setup.activeCohortId) {
+      setMessage("Create or select an active cohort before binding users.");
+      return;
+    }
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      setMessage("Enter a Beta user email before binding.");
+      return;
+    }
+    const response = await fetch("/api/admin/founder", {
+      method: "POST",
+      headers: { ...(await authHeaders()), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "bind_cohort_member",
+        cohortId: data.setup.activeCohortId,
+        email: normalizedEmail,
+        status: bindForm.status,
+        note: bindForm.note,
+      }),
+    });
+    setMessage(response.ok ? "Beta user bound to Founder Cohort." : "Unable to bind Beta user. Confirm the email has an invite or profile.");
+    if (response.ok) setBindForm({ email: "", status: "invited", note: "" });
     await load();
   }
 
@@ -237,6 +290,7 @@ export default function FounderBetaPage() {
     { label: "P95 latency", value: `${data?.monitoring.system.p95GenerationLatencyMs ?? 0}ms`, helper: "slowest user experience", icon: ActivityIcon },
     { label: "Credits consumed", value: data?.monitoring.system.creditsConsumed ?? 0, helper: "Beta usage cost signal", icon: CoinsIcon },
   ];
+  const activeCohort = data?.cohorts.find((cohort) => cohort.id === data.setup.activeCohortId) ?? data?.cohorts[0] ?? null;
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 p-6">
@@ -255,6 +309,11 @@ export default function FounderBetaPage() {
       </div>
 
       {message ? <p className="rounded-lg border bg-muted px-3 py-2 text-sm">{message}</p> : null}
+      {data && !data.setup.isCleanCohort ? (
+        <p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+          Founder View is now cohort-only. Bind the first 5 real Beta users to {data.setup.activeCohortName ?? "the active cohort"} before using these metrics for product decisions.
+        </p>
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-7">
         {metricCards.map((metric) => (
@@ -304,6 +363,60 @@ export default function FounderBetaPage() {
                 <TicketIcon data-icon="inline-start" />
                 Create Demo Invite
               </Button>
+            </div>
+            <div className="grid gap-3 rounded-lg border bg-background/70 p-3">
+              <div>
+                <p className="text-sm font-medium">Bind real Beta users</p>
+                <p className="text-xs text-muted-foreground">
+                  Founder metrics only count bound cohort members. Historical smoke/dev rows stay in the database but are excluded from this view.
+                </p>
+              </div>
+              <div className="grid gap-2 md:grid-cols-[1fr_10rem_1fr_auto]">
+                <Input
+                  onChange={(event) => setBindForm({ ...bindForm, email: event.target.value })}
+                  placeholder="beta-user@example.com"
+                  type="email"
+                  value={bindForm.email}
+                />
+                <select
+                  className="h-9 rounded-lg border bg-background px-2 text-sm"
+                  onChange={(event) => setBindForm({ ...bindForm, status: event.target.value as BindForm["status"] })}
+                  value={bindForm.status}
+                >
+                  <option value="invited">invited</option>
+                  <option value="signup">signup</option>
+                  <option value="workspace">workspace</option>
+                  <option value="first_generation">first_generation</option>
+                  <option value="result">result</option>
+                  <option value="feedback">feedback</option>
+                  <option value="completed">completed</option>
+                  <option value="churned">churned</option>
+                </select>
+                <Input
+                  onChange={(event) => setBindForm({ ...bindForm, note: event.target.value })}
+                  placeholder="Optional note"
+                  value={bindForm.note}
+                />
+                <Button disabled={!data?.setup.activeCohortId} onClick={() => void bindCohortMember()}>
+                  Bind User
+                </Button>
+              </div>
+              <div className="grid gap-2 md:grid-cols-2">
+                {(data?.setup.cohortCandidateUsers ?? []).slice(0, 6).map((candidate) => (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2 text-sm" key={candidate.userId}>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{candidate.email ?? "Unknown email"}</p>
+                      <p className="text-xs text-muted-foreground">{candidate.inviteStatus ?? "profile"} · {formatDate(candidate.registeredAt)}</p>
+                    </div>
+                    {candidate.isMember ? (
+                      <Badge variant="secondary">bound</Badge>
+                    ) : (
+                      <Button onClick={() => void bindCohortMember(candidate.email ?? "")} size="sm" variant="outline">Bind</Button>
+                    )}
+                  </div>
+                ))}
+                {!data?.setup.cohortCandidateUsers.length ? <p className="text-sm text-muted-foreground">No invited/profile candidates found yet.</p> : null}
+              </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-5">
               {(data?.setup.userJourney ?? ["Invite", "Signup", "Workspace", "First Generation", "Result", "Feedback"]).map((step, index) => (
@@ -433,6 +546,24 @@ export default function FounderBetaPage() {
                 ) : null}
               </tbody>
             </table>
+            <div className="mt-4 rounded-lg border bg-muted/30 p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">Active cohort members</p>
+                <Badge variant={activeCohort?.members.length ? "secondary" : "outline"}>{activeCohort?.members.length ?? 0}/{activeCohort?.target_users ?? 5}</Badge>
+              </div>
+              <div className="grid gap-2">
+                {(activeCohort?.members ?? []).map((member) => (
+                  <div className="flex items-center justify-between gap-3 rounded-lg border bg-background/70 px-3 py-2 text-sm" key={member.id}>
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">{member.email ?? "Invite pending profile"}</p>
+                      <p className="text-xs text-muted-foreground">{member.note ?? "No note"} · {formatDate(member.updated_at)}</p>
+                    </div>
+                    <Badge variant={statusVariant(member.status)}>{member.status}</Badge>
+                  </div>
+                ))}
+                {!activeCohort?.members.length ? <p className="text-sm text-muted-foreground">No real Beta users are bound yet. Bind users above to create a clean Founder Cohort dataset.</p> : null}
+              </div>
+            </div>
           </CardContent>
         </Card>
 

@@ -25,6 +25,9 @@ export type ContentTask = {
   error?: string;
   createdAt: string;
   updatedAt: string;
+  startedAt?: string;
+  completedAt?: string;
+  durationMs?: number;
 };
 
 export type ContentPack = Pick<ContentTask, "title" | "script" | "storyboard" | "assets">;

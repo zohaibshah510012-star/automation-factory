@@ -2,6 +2,34 @@
 
 ## 2026-07-17
 
+### Founder Beta Cohort Data Cleanup
+
+- Added migration `0031_founder_beta_data_cleanup.sql` for additive task timing fields and cohort member query support.
+- Applied remote Supabase migrations through `0031`.
+- Changed `/api/admin/founder` to default Founder metrics to active cohort members instead of historical invite/profile smoke data.
+- Added Admin Founder cohort binding by email, writing explicit `beta_cohort_members` rows with audit logging.
+- Added `/admin/founder` cohort-only warning, candidate user binding controls, and Active Cohort Members visibility.
+- Scoped Founder review notes, feedback themes, failed tasks, Credits, workflow usage, and latency metrics to the active cohort.
+- Added new-task duration recording for text/content, image, and video generation paths.
+- Added `usage_history.duration_ms` writes for new completed tasks.
+- Preserved historical data and did not auto-bind users without an authoritative real-user list.
+
+### Validation
+
+- `supabase db push`: applied `0031_founder_beta_data_cleanup.sql`.
+- `supabase migration list`: confirmed `0001` through `0031`.
+- `pnpm lint`: passed.
+- `pnpm exec tsc --noEmit`: passed.
+- `pnpm build`: passed.
+
+### Founder Beta Operation Cycle
+
+- Ran a monitoring-only Beta operation cycle against the linked Supabase project.
+- Confirmed the running Founder Beta Cohort, invite distribution, signup/workspace/first-generation/feedback events, workflow usage, task completion, Credits consumption, feedback score, and payment signals.
+- Confirmed no new P0 blocker in the current monitoring snapshot.
+- Recorded the data caveat that remote rows still include historical smoke/dev users and are not yet clean external-user evidence.
+- Did not introduce a code fix or create a commit in this cycle.
+
 ### Founder Beta Execution
 
 - Kept the Beta Execution scope limited to live-user operations support; no new AI model, provider, workflow, or publishing capability was added.
