@@ -2,6 +2,20 @@
 
 ## 2026-07-17
 
+### Customer Brief Intake
+
+- Added `/brief` as a Chinese customer-facing commercial Brief intake page.
+- Added `/api/brief` so authenticated customers can submit company/brand, product, product introduction, target customer, marketing goal, platform selection, and material links/notes.
+- Brief submissions now create `founder_customer_projects` rows with `status = planned`, allowing Founder to review customer project drafts from `/admin/revenue`.
+- Kept upload as material links/notes for the MVP because no customer-facing Storage upload flow existed in the current product path.
+- Preserved AI Runtime, Workflow Engine, Billing Core, Credits Core, Provider, and database core behavior.
+
+### Validation
+
+- `pnpm lint`: passed
+- `pnpm exec tsc --noEmit`: passed
+- `pnpm build`: passed
+
 ### Founder Revenue Validation
 
 - Added migration `0032_founder_revenue_validation.sql` with admin-only `founder_customer_projects`.

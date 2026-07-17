@@ -4,13 +4,37 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Founder Revenue Validation - use Automation Factory internally as the first real customer workflow to create a sellable commercial demo case and validate whether generated content can support customer revenue.
+Founder Customer Acquisition - let real customers submit commercial requirements without entering Admin, then let the Founder turn those requirements into revenue validation projects.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
 ## Latest verified commit before this report
 
-`6b949b510e893d95428fbd1b6d0c6673921c832c`
+`8b280ee9273d58a953db0e522dce0744d90d64fa`
+
+## Customer Brief Intake update
+
+Automation Factory now has a customer-facing Brief intake flow for Founder customer acquisition.
+
+What changed:
+
+- Added `/brief` as a Chinese customer-facing commercial requirement form.
+- Added `/api/brief` as an authenticated customer submission endpoint.
+- Customer Brief submissions create `founder_customer_projects` rows with `status = planned`, which represents a draft / pending Founder confirmation state in the existing schema.
+- Founder can review submitted customer projects from `/admin/revenue`.
+- The flow records product information, target customer, marketing goal, selected platforms, and material links/notes.
+- Upload is handled as material links or notes for this MVP because no customer-facing storage upload flow existed in the current product path.
+
+Preserved constraints:
+
+- No new migration was added.
+- No AI Runtime, Workflow Engine, Billing Core, Credits Core, Provider, or database core behavior was changed.
+
+Validation:
+
+- `pnpm lint`: passed.
+- `pnpm exec tsc --noEmit`: passed.
+- `pnpm build`: passed.
 
 ## Founder Revenue Validation execution update
 
