@@ -32,10 +32,10 @@ const capabilityIcons: Record<WorkflowCapability, typeof SparklesIcon> = {
 };
 
 const wizardSteps = [
-  { step: 1, label: "Choose workflow" },
-  { step: 2, label: "Describe need" },
-  { step: 3, label: "Preview pipeline" },
-  { step: 4, label: "Launch task" },
+  { step: 1, label: "选择模板" },
+  { step: 2, label: "输入需求" },
+  { step: 3, label: "预览流程" },
+  { step: 4, label: "启动任务" },
 ] as const;
 
 const taskTypes: WorkflowCapability[] = ["drama", "video", "image", "content"];
@@ -121,12 +121,12 @@ export default function CreateCenterPage() {
     const payload = (await response.json().catch(() => ({}))) as { task?: { id?: string }; error?: string };
     if (!response.ok || !payload.task?.id) {
       setLoading(false);
-      const error = payload.error ?? "Unable to create task.";
+      const error = payload.error ?? "无法创建任务。";
       setMessage(error === "INSUFFICIENT_CREDITS"
-        ? "You do not have enough Credits for this workflow. Open Billing to upgrade or ask the Beta admin for more trial Credits."
+        ? "当前 Credits 不足，无法创建这个工作流。请打开额度与套餐页面，或联系管理员增加体验额度。"
         : error.includes("provider") || error.includes("Provider")
-          ? `${error} Ask the Beta admin to check Provider readiness in Admin → Providers.`
-          : `${error} Check your login, invite, or try a smaller prompt.`);
+          ? `${error} 请联系管理员检查 Provider 配置。`
+          : `${error} 请检查登录状态、Beta 邀请码，或缩短输入内容后重试。`);
       return;
     }
 
@@ -140,21 +140,21 @@ export default function CreateCenterPage() {
         <header className="flex flex-col justify-between gap-8">
           <div>
             <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/15" variant="outline">
-              Workflow Wizard
+              创作向导
             </Badge>
             <h1 className="mt-5 text-4xl font-semibold tracking-tight md:text-6xl">
-              Start with a template. Let AI build the workflow.
+              先选模板，再让 AI 自动生成内容。
             </h1>
             <p className="mt-5 max-w-xl text-sm leading-6 text-white/68 md:text-base">
-              Choose a creator workflow, describe what you want, preview the AI pipeline, then launch the existing Automation Factory task engine.
+              选择一个创作场景，写下你的产品或内容需求，预览 AI 执行流程，然后启动生成任务。
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button className="bg-white text-slate-950 hover:bg-white/90" render={<Link href="/dashboard" />}>
-              Dashboard
+              工作台
             </Button>
             <Button className="border-white/20 text-white hover:bg-white/10" render={<Link href="/assets" />} variant="outline">
-              My assets
+              我的资产
             </Button>
           </div>
         </header>
@@ -168,7 +168,7 @@ export default function CreateCenterPage() {
                 return (
                   <div className={`rounded-2xl border p-3 ${active ? "border-white/50 bg-white/15" : "border-white/10 bg-white/5"}`} key={item.step}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs text-white/55">Step {item.step}</span>
+                      <span className="text-xs text-white/55">步骤 {item.step}</span>
                       {done ? <CheckCircle2Icon className="size-4 text-emerald-300" /> : null}
                     </div>
                     <p className="mt-2 text-sm font-medium">{item.label}</p>
@@ -193,8 +193,8 @@ export default function CreateCenterPage() {
       <section className="mx-auto grid max-w-7xl gap-6 px-6 pb-12 lg:grid-cols-[.95fr_1.05fr] lg:px-8">
         <Card className="bg-white/95 shadow-xl shadow-slate-950/5">
           <CardHeader>
-            <CardTitle>Step 1 · Choose a workflow template</CardTitle>
-            <CardDescription>Templates make the first user journey obvious: pick a business goal, then launch.</CardDescription>
+            <CardTitle>步骤 1：选择创作模板</CardTitle>
+            <CardDescription>不用从空白开始，先选择最接近你业务目标的模板。</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
             <div className="grid gap-2 sm:grid-cols-4">
@@ -248,7 +248,7 @@ export default function CreateCenterPage() {
         <div className="flex flex-col gap-6">
           <Card className="bg-white/95 shadow-xl shadow-slate-950/5">
             <CardHeader>
-              <CardTitle>Step 2 · Input your creative need</CardTitle>
+            <CardTitle>步骤 2：输入你的创作需求</CardTitle>
               <CardDescription>{capabilityLabels[selectedTemplate.capability].description}</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
@@ -266,10 +266,10 @@ export default function CreateCenterPage() {
               />
               <div className="flex flex-wrap gap-2">
                 <Button disabled={!canContinue || loading} onClick={nextStep}>
-                  {step < 3 ? "Continue" : "Launch AI workflow"}
+                  {step < 3 ? "继续" : "启动 AI 生成"}
                   <ArrowRightIcon data-icon="inline-end" />
                 </Button>
-                <Button onClick={() => setStep(1)} variant="outline">Back to templates</Button>
+                <Button onClick={() => setStep(1)} variant="outline">返回模板</Button>
               </div>
               {message ? <p className="text-sm text-destructive">{message}</p> : null}
             </CardContent>
@@ -277,18 +277,18 @@ export default function CreateCenterPage() {
 
           <Card className="bg-white/95 shadow-xl shadow-slate-950/5">
             <CardHeader>
-              <CardTitle>Step 3 · AI Pipeline preview</CardTitle>
-              <CardDescription>This preview mirrors the task execution page after launch.</CardDescription>
+              <CardTitle>步骤 3：AI 执行流程预览</CardTitle>
+              <CardDescription>启动后，任务详情页会按这个流程展示生成进度。</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-3">
               {[
-                ["1", "Understand brief", "Parse template, channel, audience, and desired output."],
-                ["2", "Generate assets", "Route to text, image, video, or drama workflow."],
-                ["3", "Save result", "Store task status and completed output for review."],
+                ["1", "理解需求", "解析模板、渠道、目标客户和你想要的输出。"],
+                ["2", "生成内容", "根据类型进入文案、图片、视频或短剧工作流。"],
+                ["3", "保存结果", "保存任务状态和生成结果，方便后续查看与复用。"],
               ].map(([number, title, description]) => (
                 <div className="rounded-2xl border bg-background p-4" key={number}>
                   <div className="flex items-center justify-between gap-2">
-                    <Badge variant="secondary">Step {number}</Badge>
+                  <Badge variant="secondary">步骤 {number}</Badge>
                     {step >= 3 ? <PlayCircleIcon className="size-4 text-violet-600" /> : null}
                   </div>
                   <p className="mt-3 font-medium">{title}</p>
@@ -302,7 +302,7 @@ export default function CreateCenterPage() {
             <Card className="border-violet-200 bg-violet-50 shadow-xl shadow-violet-500/10">
               <CardContent className="flex items-center gap-3 p-5">
                 {loading ? <Loader2Icon className="size-5 animate-spin text-violet-600" /> : <SparklesIcon className="size-5 text-violet-600" />}
-                <p className="text-sm text-violet-950">Launching workflow and opening task detail...</p>
+                <p className="text-sm text-violet-950">正在启动工作流，并打开任务详情页...</p>
               </CardContent>
             </Card>
           ) : null}

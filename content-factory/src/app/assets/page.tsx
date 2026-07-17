@@ -56,6 +56,19 @@ type UnifiedAsset = {
 
 const filters: Array<"all" | UnifiedAsset["kind"]> = ["all", "text", "image", "video"];
 
+const filterLabels: Record<(typeof filters)[number], string> = {
+  all: "全部",
+  text: "文案",
+  image: "图片",
+  video: "视频",
+};
+
+const kindLabels: Record<UnifiedAsset["kind"], string> = {
+  text: "文案",
+  image: "图片",
+  video: "视频",
+};
+
 async function authHeaders() {
   const session = await getSupabaseBrowserClient()?.auth.getSession();
   return { Authorization: `Bearer ${session?.data.session?.access_token ?? ""}` };
@@ -72,6 +85,17 @@ function statusVariant(status: string): "default" | "secondary" | "destructive" 
   if (status === "failed") return "destructive";
   if (status === "running" || status === "processing") return "secondary";
   return "outline";
+}
+
+function statusLabel(status: string) {
+  const labels: Record<string, string> = {
+    pending: "等待中",
+    running: "生成中",
+    processing: "生成中",
+    completed: "已完成",
+    failed: "失败",
+  };
+  return labels[status] ?? status;
 }
 
 function isImagePreview(url: string) {
@@ -114,7 +138,7 @@ export default function AssetsPage() {
       id: task.id,
       kind: "image",
       title: task.prompt,
-      description: task.provider ?? "Image generation task",
+      description: task.provider ?? "图片生成任务",
       status: task.status,
       url: task.resultUrl,
       provider: task.provider,
@@ -126,7 +150,7 @@ export default function AssetsPage() {
       id: task.id,
       kind: "video",
       title: task.prompt,
-      description: task.provider ?? "Video generation task",
+      description: task.provider ?? "视频生成任务",
       status: task.status,
       url: task.videoUrl ?? task.thumbnailUrl,
       provider: task.provider,
@@ -135,7 +159,7 @@ export default function AssetsPage() {
     }));
 
     setAssets([...textAssets, ...imageAssets, ...videoAssets].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
-    if (!contentResponse.ok && !imageResponse.ok && !videoResponse.ok) setMessage("Open the Create Center to generate your first asset.");
+    if (!contentResponse.ok && !imageResponse.ok && !videoResponse.ok) setMessage("打开创作中心，生成你的第一个内容资产。");
     else setMessage("");
   }, []);
 
@@ -160,15 +184,15 @@ export default function AssetsPage() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/15" variant="outline">
-                My Assets
+                我的资产
               </Badge>
-              <h1 className="mt-4 text-4xl font-semibold tracking-tight md:text-5xl">Your AI production library.</h1>
+              <h1 className="mt-4 text-4xl font-semibold tracking-tight md:text-5xl">你的 AI 内容资产库。</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">
-                Review generated text, image, and video results from the existing Automation Factory task pipeline.
+                查看由 Automation Factory 生成的文案、图片和视频预览结果。
               </p>
             </div>
             <Button className="bg-white text-slate-950 hover:bg-white/90" render={<Link href="/create" />}>
-              Create asset
+              创建资产
               <ArrowRightIcon data-icon="inline-end" />
             </Button>
           </div>
@@ -178,12 +202,12 @@ export default function AssetsPage() {
           <CardContent className="flex flex-col gap-3 p-4 md:flex-row">
             <div className="relative flex-1">
               <SearchIcon className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="pl-9" onChange={(event) => setQuery(event.target.value)} placeholder="Search assets, prompts, providers..." value={query} />
+              <Input className="pl-9" onChange={(event) => setQuery(event.target.value)} placeholder="搜索资产、提示词或 Provider..." value={query} />
             </div>
             <div className="flex flex-wrap gap-2">
               {filters.map((item) => (
                 <Button key={item} onClick={() => setFilter(item)} variant={filter === item ? "default" : "outline"}>
-                  {item}
+                  {filterLabels[item]}
                 </Button>
               ))}
             </div>
@@ -207,7 +231,7 @@ export default function AssetsPage() {
                   ) : (
                     <div className="flex flex-col items-center gap-2 text-muted-foreground">
                       <Icon className="size-8" />
-                      <span className="text-sm">{asset.kind} asset</span>
+                      <span className="text-sm">{kindLabels[asset.kind]}资产</span>
                     </div>
                   )}
                 </div>
@@ -217,15 +241,15 @@ export default function AssetsPage() {
                       <CardTitle className="line-clamp-2">{asset.title}</CardTitle>
                       <CardDescription>{new Date(asset.createdAt).toLocaleString()}</CardDescription>
                     </div>
-                    <Badge variant={statusVariant(asset.status)}>{asset.status}</Badge>
+                    <Badge variant={statusVariant(asset.status)}>{statusLabel(asset.status)}</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-4">
                   <p className="line-clamp-3 text-sm leading-6 text-muted-foreground">{asset.description}</p>
                   <div className="flex items-center justify-between gap-3">
-                    <Badge variant="outline">{asset.kind}</Badge>
+                    <Badge variant="outline">{kindLabels[asset.kind]}</Badge>
                     <Button render={<Link href={asset.href} />} size="sm" variant="outline">
-                      Open
+                      打开
                       <ArrowRightIcon data-icon="inline-end" />
                     </Button>
                   </div>
@@ -238,7 +262,7 @@ export default function AssetsPage() {
         {!visible.length ? (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
-              No matching assets yet. Try a different filter or create your first asset from the Create Center.
+              暂无匹配资产。你可以更换筛选条件，或从创作中心生成第一个资产。
             </CardContent>
           </Card>
         ) : null}

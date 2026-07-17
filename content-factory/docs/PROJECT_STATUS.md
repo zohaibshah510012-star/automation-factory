@@ -42,6 +42,25 @@ Business outcome:
 - The case uses only existing workflows, image/video local fallbacks, and the distribution MVP export path.
 - No new AI capability, provider, or workflow was added.
 
+## Chinese customer-facing usability update
+
+The customer-facing product surfaces were localized to Chinese so real Chinese customers can use the product without reading the internal English admin language.
+
+Updated surfaces:
+
+- Dashboard home
+- Create / workflow wizard
+- Workflow templates
+- Task result page
+- Assets library
+- Feedback form
+- Founder revenue validation page
+
+Scope:
+
+- Translation and usability copy only.
+- No AI Runtime, Workflow Engine, Billing Core, Credits Core, or database structure changes.
+
 ## Founder Revenue Validation status
 
 This phase shifts the validation goal from waiting for external Beta users to using the Founder as the first real customer. The objective is to produce and track one commercial case that can be used to sell the first customer.

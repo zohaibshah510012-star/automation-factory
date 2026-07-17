@@ -44,9 +44,9 @@ type Task = {
 };
 
 const pipeline = [
-  { key: "pending", label: "Step 1", title: "Brief accepted", description: "The workflow received your creative request and prepared the task." },
-  { key: "running", label: "Step 2", title: "AI Agent working", description: "The agent is generating the structure, script, scenes, or media prompt." },
-  { key: "completed", label: "Step 3", title: "Result ready", description: "The final output is saved and ready for review or reuse." },
+  { key: "pending", label: "步骤 1", title: "需求已接收", description: "系统已收到你的创作需求，并准备生成任务。" },
+  { key: "running", label: "步骤 2", title: "AI 正在生成", description: "AI 正在生成结构、脚本、分镜或媒体提示词。" },
+  { key: "completed", label: "步骤 3", title: "结果已完成", description: "最终结果已保存，可以查看、复制或复用。" },
 ] as const;
 
 async function authHeaders() {
@@ -72,6 +72,17 @@ function statusVariant(status: TaskStatus): "default" | "secondary" | "destructi
   if (status === "failed") return "destructive";
   if (status === "running" || status === "generating") return "secondary";
   return "outline";
+}
+
+function statusLabel(status: TaskStatus | string) {
+  const labels: Record<string, string> = {
+    pending: "等待中",
+    running: "生成中",
+    generating: "生成中",
+    completed: "已完成",
+    failed: "失败",
+  };
+  return labels[status] ?? status;
 }
 
 function pipelineState(step: (typeof pipeline)[number], status: TaskStatus) {
@@ -101,13 +112,13 @@ export default function PublicTaskDetailPage() {
   const load = useCallback(async () => {
     const response = await fetch("/api/tasks", { headers: await authHeaders(), cache: "no-store" });
     if (!response.ok) {
-      setMessage("Sign in to continue your AI creation workflow.");
+      setMessage("请先登录，再继续你的 AI 创作流程。");
       return;
     }
     const payload = (await response.json()) as { tasks?: Task[] };
     const found = (payload.tasks ?? []).find((item) => item.id === id);
     if (!found) {
-      setMessage("We could not find this task in your workspace. Start a new workflow or open a recent task from Dashboard.");
+      setMessage("没有在你的工作台找到这个任务。你可以创建一个新任务，或从工作台打开最近任务。");
       return;
     }
     setTask({ ...found, status: normalizeStatus(found.status) });
@@ -127,9 +138,9 @@ export default function PublicTaskDetailPage() {
   const timeline = useMemo(() => {
     const status = task?.status ?? "pending";
     return [
-      { label: "Creator brief", detail: task?.topic ?? "Waiting for your request", done: Boolean(task), active: status === "pending" },
-      { label: "AI Agent run", detail: status === "failed" ? "Agent stopped with a recoverable issue" : "Prompt, workflow, and provider execution", done: status === "completed" || status === "failed", active: status === "running" || status === "generating" },
-      { label: "Result package", detail: task?.assets?.length ? `${task.assets.length} asset records connected` : "Text and assets appear here when ready", done: status === "completed", active: false },
+      { label: "创作需求", detail: task?.topic ?? "等待你的输入", done: Boolean(task), active: status === "pending" },
+      { label: "AI 执行", detail: status === "failed" ? "AI 生成遇到问题，任务已停止" : "执行提示词、工作流和 Provider 调用", done: status === "completed" || status === "failed", active: status === "running" || status === "generating" },
+      { label: "结果包", detail: task?.assets?.length ? `已关联 ${task.assets.length} 个资产记录` : "文本和素材会在生成完成后显示", done: status === "completed", active: false },
     ];
   }, [task]);
 
@@ -137,12 +148,12 @@ export default function PublicTaskDetailPage() {
     return (
       <main className="min-h-screen bg-slate-50 p-6">
         <section className="mx-auto flex max-w-3xl flex-col gap-5 rounded-3xl bg-white p-6 shadow-xl shadow-slate-950/5">
-          <Badge className="w-fit" variant="secondary">Task workspace</Badge>
-          <h1 className="text-3xl font-semibold">Open your AI creation workspace</h1>
+          <Badge className="w-fit" variant="secondary">任务工作台</Badge>
+          <h1 className="text-3xl font-semibold">打开你的 AI 创作工作台</h1>
           <p className="text-sm leading-6 text-muted-foreground">{message}</p>
           <div className="flex flex-wrap gap-2">
-            <Button render={<Link href="/dashboard" />}>Go to Dashboard</Button>
-            <Button render={<Link href="/create" />} variant="outline">Start a new workflow</Button>
+            <Button render={<Link href="/dashboard" />}>返回工作台</Button>
+            <Button render={<Link href="/create" />} variant="outline">创建新任务</Button>
           </div>
         </section>
       </main>
@@ -156,14 +167,14 @@ export default function PublicTaskDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-3 text-white">
           <Button className="border-white/20 text-white hover:bg-white/10" render={<Link href="/dashboard" />} variant="outline">
             <ArrowLeftIcon data-icon="inline-start" />
-            Dashboard
+            工作台
           </Button>
           <div className="flex flex-wrap gap-2">
             <Button className="border-white/20 text-white hover:bg-white/10" onClick={() => void load()} variant="outline">
-              Refresh
+              刷新
             </Button>
             <Button className="bg-white text-slate-950 hover:bg-white/90" render={<Link href="/create" />}>
-              Create another
+              再创作一个
               <SparklesIcon data-icon="inline-end" />
             </Button>
           </div>
@@ -173,16 +184,16 @@ export default function PublicTaskDetailPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <Badge className="border-white/15 bg-white/10 text-white hover:bg-white/15" variant="outline">
-                {task?.taskType ?? "AI workflow"}
+                {task?.taskType ?? "AI 工作流"}
               </Badge>
               <h1 className="mt-4 max-w-4xl text-3xl font-semibold tracking-tight md:text-5xl">
-                {task?.title ?? task?.topic ?? "Preparing your first AI result..."}
+                {task?.title ?? task?.topic ?? "正在准备你的 AI 结果..."}
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">
-                {task?.brief ?? "Automation Factory is turning your brief into a reusable creative asset."}
+                {task?.brief ?? "Automation Factory 正在把你的需求转成可复用的内容资产。"}
               </p>
             </div>
-            <Badge variant={statusVariant(task?.status ?? "pending")}>{task?.status ?? "pending"}</Badge>
+            <Badge variant={statusVariant(task?.status ?? "pending")}>{statusLabel(task?.status ?? "pending")}</Badge>
           </div>
           <div className="mt-7 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
             <div>
@@ -215,8 +226,8 @@ export default function PublicTaskDetailPage() {
         <section className="grid gap-6 lg:grid-cols-[.85fr_1.15fr]">
           <Card>
             <CardHeader>
-              <CardTitle>AI Agent Timeline</CardTitle>
-              <CardDescription>Plain-English view of what happened during this workflow.</CardDescription>
+              <CardTitle>AI 执行时间线</CardTitle>
+              <CardDescription>用简单中文展示这个任务发生了什么。</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4">
               {timeline.map((item, index) => (
@@ -238,26 +249,26 @@ export default function PublicTaskDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Result showcase</CardTitle>
-              <CardDescription>Your generated result appears here as soon as the workflow completes.</CardDescription>
+              <CardTitle>生成结果</CardTitle>
+              <CardDescription>工作流完成后，生成内容会显示在这里。</CardDescription>
               <CardAction>
                 {generatedText ? (
                   <Button onClick={() => void navigator.clipboard.writeText(generatedText)} size="sm" variant="outline">
                     <CopyIcon data-icon="inline-start" />
-                    Copy
+                    复制
                   </Button>
                 ) : null}
               </CardAction>
             </CardHeader>
             <CardContent className="flex flex-col gap-4">
               <article className="min-h-56 whitespace-pre-wrap rounded-2xl border bg-background p-5 text-sm leading-7">
-                {generatedText || task?.error || "Your AI result is being generated. You can keep this page open or return from Dashboard later."}
+                {generatedText || task?.error || "AI 正在生成结果。你可以保持页面打开，也可以稍后从工作台回来查看。"}
               </article>
               {task?.storyboard?.length ? (
                 <div className="grid gap-2 md:grid-cols-2">
                   {task.storyboard.slice(0, 4).map((scene, index) => (
                     <div className="rounded-xl border bg-muted/40 p-3 text-sm" key={`${index}-${scene}`}>
-                      <p className="text-xs text-muted-foreground">Scene {index + 1}</p>
+                      <p className="text-xs text-muted-foreground">分镜 {index + 1}</p>
                       <p className="mt-1 line-clamp-3">{scene}</p>
                     </div>
                   ))}
@@ -270,8 +281,8 @@ export default function PublicTaskDetailPage() {
         <section className="grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
           <Card>
             <CardHeader>
-              <CardTitle>Assets connected to this task</CardTitle>
-              <CardDescription>Text, image, voice, or video assets generated by the workflow.</CardDescription>
+              <CardTitle>关联资产</CardTitle>
+              <CardDescription>这个工作流生成的文案、图片、语音或视频资产。</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 md:grid-cols-2">
               {task?.assets?.map((asset) => {
@@ -301,7 +312,7 @@ export default function PublicTaskDetailPage() {
               })}
               {!task?.assets?.length ? (
                 <div className="rounded-2xl border bg-muted/40 p-5 text-sm leading-6 text-muted-foreground md:col-span-2">
-                  Media assets will appear here when the configured provider returns files. Text results are already available in the showcase above.
+                  配置的 Provider 返回文件后，媒体资产会显示在这里。文本结果会先显示在上方结果区。
                 </div>
               ) : null}
             </CardContent>
@@ -309,31 +320,31 @@ export default function PublicTaskDetailPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Next best action</CardTitle>
-              <CardDescription>Move from first value to reuse, iteration, or a new workflow.</CardDescription>
+              <CardTitle>下一步</CardTitle>
+              <CardDescription>查看资产、继续修改，或创建新的工作流。</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 text-sm">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">Created</span>
+                <span className="text-muted-foreground">创建时间</span>
                 <span>{task?.createdAt ? new Date(task.createdAt).toLocaleString() : "-"}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-muted-foreground">Credits used</span>
+                <span className="text-muted-foreground">消耗 Credits</span>
                 <span>{task?.creditsCharged ?? 0}</span>
               </div>
               <div className="rounded-xl bg-muted p-3 text-xs text-muted-foreground">
                 <ClockIcon className="mr-1 inline size-3" />
-                Completed work is saved to My Assets automatically.
+                已完成的内容会自动保存到“我的资产”。
               </div>
               <Button render={<Link href="/assets" />}>
-                Open My Assets
+                打开我的资产
                 <FileTextIcon data-icon="inline-end" />
               </Button>
               <Button render={<Link href="/create" />} variant="outline">
-                Create another workflow
+                再创建一个工作流
               </Button>
               <Button render={<Link href="/dashboard/feedback" />} variant="ghost">
-                Share feedback
+                提交反馈
               </Button>
             </CardContent>
           </Card>

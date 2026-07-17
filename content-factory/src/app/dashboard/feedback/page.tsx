@@ -48,7 +48,7 @@ export default function FeedbackPage() {
       }),
     });
     setLoading(false);
-    setMessage(response.ok ? "Thanks — your feedback is now in the Beta review queue." : "Feedback submission failed. Please sign in and try again.");
+    setMessage(response.ok ? "感谢反馈，你的反馈已进入 Beta 复盘队列。" : "反馈提交失败，请确认已登录后重试。");
     if (response.ok) {
       setContentTaskId("");
       setUseCase("");
@@ -61,74 +61,74 @@ export default function FeedbackPage() {
     <main className="mx-auto flex max-w-4xl flex-col gap-6 p-6">
       <TrackPageView surface="feedback" properties={{ page: "dashboard_feedback" }} />
       <header className="flex flex-col gap-3">
-        <Badge className="w-fit" variant="secondary">Beta Feedback</Badge>
-        <h1 className="text-3xl font-semibold tracking-tight">How was your first AI production experience?</h1>
+        <Badge className="w-fit" variant="secondary">Beta 反馈</Badge>
+        <h1 className="text-3xl font-semibold tracking-tight">这次 AI 内容生成体验怎么样？</h1>
         <p className="text-sm leading-6 text-muted-foreground">
-          Share a score, connect feedback to a task if relevant, and tell us what would make Automation Factory more useful for your real workflow.
+          请给出评分，也可以关联具体任务。你的反馈会帮助我们判断这个产品是否真的能解决实际业务问题。
         </p>
       </header>
 
       <Card>
         <CardHeader>
           <MessageSquareIcon />
-          <CardTitle>Submit feedback</CardTitle>
-          <CardDescription>Ratings, content quality notes, and product suggestions go directly to the admin Beta queue.</CardDescription>
+          <CardTitle>提交反馈</CardTitle>
+          <CardDescription>评分、内容质量意见和产品建议会直接进入管理员 Beta 反馈队列。</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-5" onSubmit={submit}>
             <div className="grid gap-3 md:grid-cols-4">
               <div className="grid gap-2">
-                <label className="text-sm font-medium" htmlFor="satisfaction">Score 1-5</label>
+                <label className="text-sm font-medium" htmlFor="satisfaction">满意度 1-5</label>
                 <Input id="satisfaction" max={5} min={1} onChange={(event) => setSatisfaction(Number(event.target.value))} type="number" value={satisfaction} />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium" htmlFor="result_quality">Result quality 1-5</label>
+                <label className="text-sm font-medium" htmlFor="result_quality">结果质量 1-5</label>
                 <Input id="result_quality" max={5} min={1} onChange={(event) => setResultQuality(Number(event.target.value))} type="number" value={resultQuality} />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium" htmlFor="category">Category</label>
+                <label className="text-sm font-medium" htmlFor="category">反馈类型</label>
                 <select className="h-8 rounded-lg border bg-background px-2 text-sm" id="category" onChange={(event) => setCategory(event.target.value)} value={category}>
-                  <option value="short_drama">Short drama</option>
-                  <option value="content_marketing">Content marketing</option>
-                  <option value="image_generation">Image generation</option>
-                  <option value="video_generation">Video generation</option>
-                  <option value="billing">Billing / credits</option>
-                  <option value="general">General</option>
+                  <option value="short_drama">AI 短剧</option>
+                  <option value="content_marketing">内容营销</option>
+                  <option value="image_generation">图片生成</option>
+                  <option value="video_generation">视频生成</option>
+                  <option value="billing">额度 / 套餐</option>
+                  <option value="general">其他</option>
                 </select>
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium" htmlFor="continue_use">Would continue?</label>
+                <label className="text-sm font-medium" htmlFor="continue_use">是否愿意继续用？</label>
                 <select className="h-8 rounded-lg border bg-background px-2 text-sm" id="continue_use" onChange={(event) => setContinueUse(event.target.value)} value={continueUse}>
-                  <option value="yes">Yes, I would keep using it</option>
-                  <option value="no">Not yet</option>
+                  <option value="yes">愿意继续使用</option>
+                  <option value="no">暂时不会</option>
                 </select>
               </div>
             </div>
             <div className="grid gap-3 md:grid-cols-[1fr_18rem]">
               <div className="grid gap-2">
-                <label className="text-sm font-medium" htmlFor="use_case">Use case</label>
-                <Input id="use_case" onChange={(event) => setUseCase(event.target.value)} placeholder="e.g. TikTok ads, short drama testing, product visuals" value={useCase} />
+                <label className="text-sm font-medium" htmlFor="use_case">你的使用场景</label>
+                <Input id="use_case" onChange={(event) => setUseCase(event.target.value)} placeholder="例如：抖音广告、短剧测试、产品宣传图" value={useCase} />
               </div>
               <div className="grid gap-2">
-                <label className="text-sm font-medium" htmlFor="content_task_id">Task ID optional</label>
-                <Input id="content_task_id" onChange={(event) => setContentTaskId(event.target.value)} placeholder="Paste task id" value={contentTaskId} />
+                <label className="text-sm font-medium" htmlFor="content_task_id">任务 ID（可选）</label>
+                <Input id="content_task_id" onChange={(event) => setContentTaskId(event.target.value)} placeholder="粘贴任务 ID" value={contentTaskId} />
               </div>
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium" htmlFor="content_feedback">Content feedback</label>
-              <Textarea id="content_feedback" onChange={(event) => setContentFeedback(event.target.value)} placeholder="What was useful, inaccurate, slow, or not ready to use?" value={contentFeedback} />
+              <label className="text-sm font-medium" htmlFor="content_feedback">内容反馈</label>
+              <Textarea id="content_feedback" onChange={(event) => setContentFeedback(event.target.value)} placeholder="哪里有用？哪里不准？哪里太慢？哪些内容还不能直接交付？" value={contentFeedback} />
             </div>
             <div className="grid gap-2">
-              <label className="text-sm font-medium" htmlFor="suggestion">Suggestion</label>
-              <Textarea id="suggestion" onChange={(event) => setSuggestion(event.target.value)} placeholder="What should we improve before public launch?" value={suggestion} />
+              <label className="text-sm font-medium" htmlFor="suggestion">改进建议</label>
+              <Textarea id="suggestion" onChange={(event) => setSuggestion(event.target.value)} placeholder="正式上线前，你最希望我们改进什么？" value={suggestion} />
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button disabled={loading} type="submit">
                 <SendIcon data-icon="inline-start" />
-                Submit feedback
+                提交反馈
               </Button>
               <Button render={<Link href="/dashboard/studio" />} type="button" variant="outline">
-                Back to Studio
+                返回 Studio
               </Button>
             </div>
             {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}

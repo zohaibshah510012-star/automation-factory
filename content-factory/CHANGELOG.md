@@ -21,6 +21,13 @@
 - Marked the Founder Demo Case as `ready_to_sell`.
 - Verified `/admin/revenue` returns `200` and `/api/health` reports database `true` in local production preview.
 
+### Chinese Customer-Facing Usability
+
+- Localized the main customer-facing product path to Chinese for China-based customers.
+- Updated Dashboard, Create / Workflow Wizard, Workflow Templates, Task Result, Short Drama Result, Assets, Feedback, and Founder Revenue Validation copy.
+- Localized workflow template names, descriptions, example inputs, estimated outputs, outcomes, status labels, CTA labels, empty states, and error guidance.
+- Preserved existing AI Runtime, Workflow Engine, Billing Core, Credits Core, Provider, and database behavior.
+
 ### Founder Beta Cohort 1 Execution
 
 - Ran the initial clean cohort monitoring check for `Founder Beta Cohort 1`.
