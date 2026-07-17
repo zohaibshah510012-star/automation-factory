@@ -2,6 +2,17 @@
 
 ## 2026-07-17
 
+### Close Beta P0 Readiness Gates
+
+- Added `docs/AUTH_BETA_ACCESS_VERIFICATION.md`.
+- Verified controlled Auth/Beta Access against linked Supabase `rfghzowaeqojvnxiqznc` and local production preview `http://127.0.0.1:3001`.
+- Confirmed invite creation, invite verification, user creation, login, bootstrap/profile, invite consumption, workspace creation, dashboard load, customer admin denial, and uninvited-user block.
+- Added `docs/BACKUP_PITR_VERIFICATION.md`.
+- Confirmed Backup/PITR remains blocked: Supabase CLI returned `pitr_enabled=false` and `backups=null`.
+- Confirmed this workstation still lacks Docker, `pg_dump`, and `DATABASE_URL`, so it cannot create or restore-validate a database dump locally.
+- Updated Closed Beta gate: Auth Ready and Beta User Created are checked; Backup Ready, Restore Verified, and Production Smoke Test Passed remain unchecked.
+- Preserved AI Runtime, Workflow Engine, Billing Core, Credits Core, and database schema.
+
 ### Beta P0 Execution Readiness
 
 - Added `docs/BETA_P0_EXECUTION_STATUS.md`.

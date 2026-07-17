@@ -12,13 +12,13 @@ Source note: `docs/BETA_P0_EXECUTION_CHECKLIST.md` was requested as input but is
 
 | Area | Status | Blocking reason |
 | --- | --- | --- |
-| Auth/Beta Access | BLOCKED | Production invite/auth gate has not been executed and evidenced on the production domain. |
-| Backup/PITR Restore | BLOCKED | Pre-Beta backup and restore/PITR validation evidence is missing. |
-| Closed Beta Gate | BLOCKED | Required P0 evidence is incomplete. |
+| Auth/Beta Access | VERIFIED | Linked Supabase + local production preview verification passed. Production-domain smoke test is still required separately. |
+| Backup/PITR Restore | BLOCKED | Supabase CLI reports `pitr_enabled=false` and `backups=null`; restore evidence is missing. |
+| Closed Beta Gate | BLOCKED | Backup/PITR and production smoke test evidence are incomplete. |
 
 ## Auth/Beta Access
 
-Status: **BLOCKED**
+Status: **VERIFIED for linked Supabase + local production preview**
 
 ### Owner
 
@@ -61,17 +61,24 @@ Current gap:
    - invite is consumed
    - non-invited user cannot bypass the Beta gate
 
-### Acceptance evidence required
+### Acceptance evidence
 
-- Production domain used for the test.
-- Deployed commit ID.
-- Admin email used, with secrets redacted.
-- Invite code status before and after consumption.
-- Successful `/api/auth/bootstrap` response or browser/API evidence.
-- Database evidence that the test user's profile/workspace exists.
-- Evidence that the invite status changed to consumed/used.
-- Evidence that an uninvited user is blocked.
-- Screenshot or copied result from the relevant Admin page with sensitive data redacted.
+Detailed evidence is recorded in `docs/AUTH_BETA_ACCESS_VERIFICATION.md`.
+
+Verified:
+
+- Controlled test user created.
+- Login succeeded.
+- Invite was verified and consumed.
+- `/api/auth/bootstrap` created the customer profile.
+- Workspace was created and listed.
+- `/dashboard` returned `200`.
+- Customer access to `/api/admin/users` returned `403`.
+- Uninvited user bootstrap returned `401`.
+
+Production-domain follow-up:
+
+- Run the same smoke on the production HTTPS domain after VPS/Nginx/SSL are online.
 
 ## Backup/PITR Restore
 
@@ -87,12 +94,13 @@ Status: **BLOCKED**
 
 Known from prior production verification records:
 
-- Production migrations were previously verified through `0032_founder_revenue_validation.sql`.
+- Production migrations were verified through `0032_founder_revenue_validation.sql`.
 - Required production tables were previously reachable through Supabase service role checks.
-- A pre-Beta backup was not created from the local workstation.
-- `supabase db dump` was blocked because Docker is not installed on the workstation.
-- `pg_dump` was unavailable on the workstation.
-- `DATABASE_URL` was not configured on the workstation.
+- `supabase backups list --project-ref rfghzowaeqojvnxiqznc -o json` returned `pitr_enabled=false` and `backups=null`.
+- A pre-Beta backup was not created from this workstation.
+- Docker is not installed on this workstation.
+- `pg_dump` is unavailable on this workstation.
+- `DATABASE_URL` is not configured on this workstation.
 - `docs/BACKUP.md` and `docs/RESTORE.md` define backup and restore procedures.
 
 Current gap:
@@ -143,11 +151,11 @@ Preferred production-safe sequence:
 
 ## Closed Beta Gate
 
-- [ ] Auth Ready
+- [x] Auth Ready
 - [ ] Backup Ready
 - [ ] Restore Verified
 - [ ] Production Smoke Test Passed
-- [ ] Beta User Created
+- [x] Beta User Created
 
 Gate decision: **Do not invite Closed Beta users yet.**
 

@@ -36,7 +36,11 @@ Production verification for controlled real-customer Beta.
   - production smoke test must pass on the VPS before inviting real customers
   - VPS runtime could not be verified because no production SSH host/domain/runtime access context is available in this workspace
 - Added `docs/BETA_P0_EXECUTION_STATUS.md` to record the Closed Beta P0 gate state.
-- Confirmed Closed Beta remains NOT READY because Auth/Beta Access and Backup/PITR Restore are still BLOCKED.
+- Confirmed Closed Beta remains NOT READY because Backup/PITR Restore and production-domain smoke test are still not complete.
+- Added `docs/AUTH_BETA_ACCESS_VERIFICATION.md`.
+- Verified Auth/Beta Access against linked Supabase `rfghzowaeqojvnxiqznc` and local production preview `http://127.0.0.1:3001`.
+- Added `docs/BACKUP_PITR_VERIFICATION.md`.
+- Confirmed Backup/PITR Restore remains BLOCKED because Supabase CLI reports `pitr_enabled=false` and `backups=null`.
 
 ## Not done
 
@@ -50,10 +54,9 @@ Production verification for controlled real-customer Beta.
 
 Run the production VPS verification pass from a machine with production access:
 
-1. Assign the Auth/Beta Access owner and execute the production invite-only auth flow.
-2. Assign the Backup/PITR owner and create or confirm a pre-Beta Supabase backup.
-3. Verify the restore/PITR path without destructive production changes.
-4. Follow `docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md`.
-5. Execute `docs/PRODUCTION_LAUNCH_RUNBOOK.md` on the production VPS.
-6. Run `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md`.
-7. Invite the first 1-2 controlled Beta users only after all Closed Beta gates pass.
+1. Assign the Backup/PITR owner and create or confirm a pre-Beta Supabase backup.
+2. Enable/verify PITR or complete a non-production restore drill.
+3. Follow `docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md`.
+4. Execute `docs/PRODUCTION_LAUNCH_RUNBOOK.md` on the production VPS.
+5. Run `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md` on the production HTTPS domain.
+6. Invite the first 1-2 controlled Beta users only after all Closed Beta gates pass.

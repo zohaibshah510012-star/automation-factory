@@ -108,18 +108,18 @@ Closed Beta remains **NOT READY**.
 
 The current P0 blockers are now tracked in `docs/BETA_P0_EXECUTION_STATUS.md`.
 
-Blocked:
+Latest P0 verification:
 
-- Auth/Beta Access: production invite-only auth flow has not been executed and evidenced on the production domain.
-- Backup/PITR Restore: pre-Beta backup, PITR status, and restore validation evidence are missing.
+- Auth/Beta Access: verified for linked Supabase project `rfghzowaeqojvnxiqznc` and local production preview `http://127.0.0.1:3001`. Evidence is recorded in `docs/AUTH_BETA_ACCESS_VERIFICATION.md`.
+- Backup/PITR Restore: remains blocked. Supabase CLI reports `pitr_enabled=false` and `backups=null`; Docker, `pg_dump`, and `DATABASE_URL` are unavailable on this workstation. Evidence and restore plan are recorded in `docs/BACKUP_PITR_VERIFICATION.md`.
 
 Closed Beta gate:
 
-- [ ] Auth Ready
+- [x] Auth Ready
 - [ ] Backup Ready
 - [ ] Restore Verified
 - [ ] Production Smoke Test Passed
-- [ ] Beta User Created
+- [x] Beta User Created
 
 Execution note:
 
