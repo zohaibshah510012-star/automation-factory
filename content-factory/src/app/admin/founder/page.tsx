@@ -85,6 +85,13 @@ type FounderData = {
     byCategory: Array<{ category: string; count: number }>;
   };
   monitoring: {
+    system: {
+      failedTasks: number;
+      providerErrors: number;
+      averageGenerationLatencyMs: number;
+      p95GenerationLatencyMs: number;
+      creditsConsumed: number;
+    };
     launchChecklist: Record<string, { passed: boolean; count: number }>;
     failedGenerations: Array<{
       id: string;
@@ -113,6 +120,7 @@ type FounderData = {
       biggestPainPoints: Array<{ category: string; priority: string; note: string; status: string }>;
       mostWantedCapabilities: Array<{ priority: string; note: string; status: string }>;
       willingnessToPaySignals: Array<{ source: string; priority: string; note: string; status: string }>;
+      qualityIssues: Array<{ source: string; score: number | null; note: string; status: string }>;
     };
   };
   generatedAt: string;
@@ -222,6 +230,13 @@ export default function FounderBetaPage() {
     ["Feedback submitted", data?.monitoring.launchChecklist.feedbackSubmitted],
     ["Founder view", data?.monitoring.launchChecklist.founderViewReady],
   ] as const;
+  const systemCards: Array<{ label: string; value: string | number; helper: string; icon: typeof ActivityIcon }> = [
+    { label: "Failed tasks", value: data?.monitoring.system.failedTasks ?? 0, helper: "generation blockers", icon: AlertTriangleIcon },
+    { label: "Provider errors", value: data?.monitoring.system.providerErrors ?? 0, helper: "recent system logs", icon: AlertTriangleIcon },
+    { label: "Avg latency", value: `${data?.monitoring.system.averageGenerationLatencyMs ?? 0}ms`, helper: "completed task duration", icon: ActivityIcon },
+    { label: "P95 latency", value: `${data?.monitoring.system.p95GenerationLatencyMs ?? 0}ms`, helper: "slowest user experience", icon: ActivityIcon },
+    { label: "Credits consumed", value: data?.monitoring.system.creditsConsumed ?? 0, helper: "Beta usage cost signal", icon: CoinsIcon },
+  ];
 
   return (
     <main className="mx-auto flex max-w-7xl flex-col gap-6 p-6">
@@ -374,6 +389,19 @@ export default function FounderBetaPage() {
         </Card>
       </section>
 
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {systemCards.map((metric) => (
+          <Card key={metric.label}>
+            <CardHeader>
+              <CardTitle className="text-sm">{metric.label}</CardTitle>
+              <CardDescription>{metric.helper}</CardDescription>
+              <CardAction><metric.icon /></CardAction>
+            </CardHeader>
+            <CardContent><p className="text-2xl font-semibold">{metric.value}</p></CardContent>
+          </Card>
+        ))}
+      </section>
+
       <section className="grid gap-6 lg:grid-cols-[1fr_1fr]">
         <Card>
           <CardHeader>
@@ -442,7 +470,7 @@ export default function FounderBetaPage() {
         </Card>
       </section>
 
-      <section className="grid gap-6 lg:grid-cols-[20rem_1fr_1fr]">
+      <section className="grid gap-6 lg:grid-cols-[20rem_1fr_1fr_1fr]">
         <Card>
           <CardHeader>
             <CardTitle>Feedback categories</CardTitle>
@@ -505,6 +533,26 @@ export default function FounderBetaPage() {
             {!data?.monitoring.feedbackLoop.mostWantedCapabilities.length && !data?.monitoring.feedbackLoop.willingnessToPaySignals.length ? (
               <p className="text-sm text-muted-foreground">No feature or payment signals yet.</p>
             ) : null}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Quality issues</CardTitle>
+            <CardDescription>Low result-quality feedback and result complaints.</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {(data?.monitoring.feedbackLoop.qualityIssues ?? []).map((item, index) => (
+              <div className="rounded-lg border bg-background/60 p-3" key={`quality-${index}`}>
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <Badge variant="outline">{item.source}</Badge>
+                  {item.score ? <Badge variant="destructive">{item.score}/5</Badge> : null}
+                  <Badge variant={statusVariant(item.status)}>{item.status}</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{item.note}</p>
+              </div>
+            ))}
+            {!data?.monitoring.feedbackLoop.qualityIssues.length ? <p className="text-sm text-muted-foreground">No quality issues reported yet.</p> : null}
           </CardContent>
         </Card>
       </section>

@@ -4,13 +4,40 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Founder Beta Run - support the first 5 real Beta users, capture first-value evidence, and turn feedback into product/business decisions.
+Founder Beta Execution - support the first 5 real Beta users in a live operating loop, capture activation evidence, monitor P0/P1 blockers, and turn feedback into product/business decisions.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
 ## Latest verified commit before this report
 
-`881b2f72a2c3257f61a4f2d6baa51d617b933552`
+`2e41dc5024e9b155a5d4c7b5c3f1230aa07b0512`
+
+## Founder Beta Execution status
+
+Current execution posture:
+
+- No new AI models, providers, workflows, publishing integrations, Billing Core changes, Credits core changes, or Workflow Engine changes were added.
+- The first-user path remains: Invite -> Signup -> Workspace -> Create -> Short Drama -> Result -> Feedback.
+- `/admin/founder` now functions as the daily Founder operating page.
+
+Daily monitoring now covers:
+
+- User funnel: invited, signed up, workspace created, activated, generated, completed.
+- System health: failed tasks, provider/system errors, average generation latency, P95 generation latency, and Credits consumption.
+- Feedback: Bug, Feature Request, Quality Issue, User Feedback, Need, and Payment Signal.
+
+Latest remote Beta data snapshot:
+
+- Founder cohort: `Founder Beta Cohort 1`, target users `5`, status `running`.
+- Invites: `16 used`, `2 pending`.
+- Product events are present for `signup_completed`, `first_workspace_created`, `first_generation_started`, `first_generation_completed`, and `feedback_submitted`.
+- Tasks: `66 completed`, `11 failed`.
+- Feedback rows: `5`.
+- Low-quality feedback rows: `0`.
+- Recent error logs: `15`.
+- Credits consumed: `4445`.
+
+Observed failed tasks are historical Beta/dev smoke data, mainly OpenAI image timeouts, insufficient Credits, and older provider-configuration failures. These are now visible in `/admin/founder` and do not introduce a new P0/P1 code blocker for the current local fallback Beta path.
 
 ## Founder Beta Run status
 
@@ -36,6 +63,7 @@ Beta Launch checklist status:
 - Signup / workspace / first-generation / result / feedback chain: covered by existing product events and Beta validation readiness.
 - Admin founder monitoring: covered by `/admin/founder`.
 - Daily diagnostic signals: failed generations, recent error logs, blocking points, and feedback classification are visible on `/admin/founder`.
+- System diagnostic signals now include generation latency, P95 latency, provider errors, and Credits consumption.
 
 Founder Beta user test path:
 
@@ -237,6 +265,7 @@ SaaS operating layer status:
 - `/api/admin/overview` now includes provider readiness, Beta activation rate, feedback queue health, task counts, Credits usage, and provider summaries for lightweight operations dashboards.
 - `/admin/founder` now includes Beta launch checklist, blocking points, failed generations, recent error logs, feedback categories, pain points, feature requests, and payment signals.
 - Product feedback is now grouped into User Feedback, Bug, Feature Request, Need, and Business Signal inside the Founder review flow.
+- `/admin/founder` now also surfaces Quality Issues, provider error count, generation latency, P95 latency, and Credits consumption for the daily Founder review.
 
 Beta Validation readiness status:
 

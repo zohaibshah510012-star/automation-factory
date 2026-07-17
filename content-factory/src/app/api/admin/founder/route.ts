@@ -133,6 +133,13 @@ function average(values: number[]) {
   return values.length ? Number((values.reduce((total, value) => total + value, 0) / values.length).toFixed(1)) : 0;
 }
 
+function percentile(values: number[], target: number) {
+  if (!values.length) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil((target / 100) * sorted.length) - 1));
+  return Math.round(sorted[index]);
+}
+
 function percent(numerator: number, denominator: number) {
   return denominator ? Number(((numerator / denominator) * 100).toFixed(1)) : 0;
 }
@@ -380,11 +387,33 @@ export async function GET(request: Request) {
       message: typeof log.metadata?.error === "string" ? log.metadata.error : typeof log.metadata?.type === "string" ? log.metadata.type : log.event,
       createdAt: log.created_at,
     }));
+    const latencyValues = betaTasks.map((task) => Number(task.duration_ms ?? 0)).filter((value) => value > 0);
+    const providerErrorCount = betaLogs.filter((log) => /provider|ai|image|video|task|generation/i.test(log.event)).length;
 
     const reviewNoteCategoryCounts = REVIEW_CATEGORIES.map((category) => ({
       category: feedbackCategoryLabel(category),
       count: noteRows.filter((note) => note.category === category).length,
     }));
+    const qualityIssues = [
+      ...betaFeedback
+        .filter((row) => Number(row.result_quality ?? row.satisfaction ?? 5) <= 3)
+        .slice(0, 5)
+        .map((row) => ({
+          source: "feedback",
+          score: row.result_quality ?? row.satisfaction,
+          note: `${userLabel(row.user_id ? profileById.get(row.user_id) : null)}: ${row.content_feedback ?? row.suggestion ?? row.category}`,
+          status: row.status,
+        })),
+      ...noteRows
+        .filter((note) => note.category === "feedback" && /quality|wrong|bad|poor|output|result|不准|质量|效果|错误|差/.test(note.note.toLowerCase()))
+        .slice(0, 5)
+        .map((note) => ({
+          source: "review_note",
+          score: null,
+          note: note.note,
+          status: note.status,
+        })),
+    ].slice(0, 5);
     const feedbackThemes = {
       mostUsedWorkflow: mostUsedWorkflow ? { name: mostUsedWorkflow[0], count: mostUsedWorkflow[1] } : null,
       biggestPainPoints: noteRows
@@ -405,6 +434,7 @@ export async function GET(request: Request) {
           .slice(0, 5)
           .map((row) => ({ source: "feedback", priority: "medium", note: `${userLabel(row.user_id ? profileById.get(row.user_id) : null)}: ${row.suggestion ?? row.content_feedback ?? row.category}`, status: row.status })),
       ].slice(0, 5),
+      qualityIssues,
     };
 
     const enrichedNotes = noteRows.map((note) => ({
@@ -494,6 +524,13 @@ export async function GET(request: Request) {
           byCategory: reviewNoteCategoryCounts,
         },
         monitoring: {
+          system: {
+            failedTasks,
+            providerErrors: providerErrorCount,
+            averageGenerationLatencyMs: Math.round(average(latencyValues)),
+            p95GenerationLatencyMs: percentile(latencyValues, 95),
+            creditsConsumed: creditsUsed,
+          },
           launchChecklist: {
             inviteToSignup: { passed: inviteRows.length > 0, count: inviteRows.length },
             signupCompleted: { passed: signupCompletedIds.size > 0, count: signupCompletedIds.size },
