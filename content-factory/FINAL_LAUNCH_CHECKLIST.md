@@ -1,13 +1,14 @@
 # Final Launch Checklist
 
-Baseline: `0001` through `0030`.
+Baseline: `0001` through `0032`.
 
 ## 1. Supabase migration verification
 
-- [ ] `supabase/migrations` contains exactly `0001` through `0030`
+- [ ] `supabase/migrations` contains exactly `0001` through `0032`
 - [ ] No duplicate migration prefixes
-- [ ] Production Supabase has applied through `0030_founder_beta_run.sql`
+- [ ] Production Supabase has applied through `0032_founder_revenue_validation.sql`
 - [ ] Required billing/payment/distribution/analytics/workspace tables exist
+- [ ] `founder_customer_projects` exists for customer Brief and revenue validation projects
 - [ ] `grant_subscription_credits` and `admin_adjust_user_credits` RPCs exist
 
 ## 2. Environment verification

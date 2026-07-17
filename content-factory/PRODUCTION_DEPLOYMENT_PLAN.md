@@ -80,7 +80,7 @@ Current local migrations are continuous from:
 ```text
 0001_content_factory.sql
 ...
-0030_founder_beta_run.sql
+0032_founder_revenue_validation.sql
 ```
 
 Production deployment steps:
@@ -94,8 +94,8 @@ supabase migration list
 
 Acceptance criteria:
 
-- Remote Supabase migration list shows all migrations through `0030_founder_beta_run.sql`.
-- Required tables exist: `profiles`, `content_tasks`, `credit_transactions`, `plans`, `subscriptions`, `payment_providers`, `distribution_jobs`, `short_drama_assets`, `product_events`, `user_feedback`, `workspaces`, `beta_cohorts`, `beta_cohort_members`, `beta_review_notes`.
+- Remote Supabase migration list shows all migrations through `0032_founder_revenue_validation.sql`.
+- Required tables exist: `profiles`, `content_tasks`, `credit_transactions`, `plans`, `subscriptions`, `payment_providers`, `distribution_jobs`, `short_drama_assets`, `product_events`, `user_feedback`, `workspaces`, `beta_cohorts`, `beta_cohort_members`, `beta_review_notes`, `founder_customer_projects`.
 - Required RPCs exist: `grant_subscription_credits`, `admin_adjust_user_credits`.
 
 Use `supabase db push` for the current Supabase CLI workflow. If the deployment environment standardizes on migration bundles/CI later, replace this with the equivalent non-interactive migration deploy command.

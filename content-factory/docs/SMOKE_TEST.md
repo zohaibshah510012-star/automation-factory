@@ -100,7 +100,7 @@ Use this checklist after production deployment and before inviting real users.
 ### 6. Checklist
 
 - [ ] Open `/admin/checklist`.
-- [ ] Confirm migration check references `0030_founder_beta_run.sql`.
+- [ ] Confirm migration check references `0032_founder_revenue_validation.sql`.
 - [ ] Confirm Security is READY.
 - [ ] Confirm Backup is READY or explicitly accepted as WARNING.
 

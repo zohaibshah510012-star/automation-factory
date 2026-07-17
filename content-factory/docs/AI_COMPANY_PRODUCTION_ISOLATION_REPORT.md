@@ -86,7 +86,7 @@ Current local migration files are continuous through:
 
 - `0032_founder_revenue_validation.sql`
 
-Important note: several production docs still mention `0030_founder_beta_run.sql` as the expected latest migration. That is now outdated.
+Current production baseline should be `0032_founder_revenue_validation.sql`.
 
 ### AI providers
 
@@ -206,20 +206,15 @@ Conclusion: AI-Company can be isolated from AIXHub/Yuedong.
 
 ### High
 
-1. Production migration docs are outdated.
-   - Actual local migrations run through `0032_founder_revenue_validation.sql`.
-   - Several production docs still list `0030_founder_beta_run.sql` as the latest production baseline.
-   - Risk: deploying with only 0030 would miss Founder revenue validation/customer project tables.
-
-2. Production Supabase state must be verified.
+1. Production Supabase state must be verified.
    - The app requires managed Supabase for auth, database, RLS, credits, tasks, analytics, feedback, and admin operations.
    - Risk: wrong Supabase project or incomplete migrations will break Beta flows.
 
-3. Production secrets are not verified in this assessment.
+2. Production secrets are not verified in this assessment.
    - Required values include Supabase keys, admin emails, provider keys, app URL, and selected provider settings.
    - Risk: `/api/health`, auth bootstrap, generation, or admin access can fail.
 
-4. Asset persistence model is not fully production-hardened.
+3. Asset persistence model is not fully production-hardened.
    - Local image/video fallback generates files under the app/public generated asset path.
    - This is acceptable for a single persistent VPS Beta, but weaker than Supabase Storage for durable multi-instance or container rebuild scenarios.
 
@@ -300,21 +295,20 @@ Minimum conditions before inviting Beta users:
 - Do not promise real production-grade video generation until Kling or Runway is configured and smoke-tested.
 - Do not promise durable cloud asset storage until Supabase Storage or another object store is configured and backup-tested.
 - Do not accept real payments until Stripe/PayPal sandbox, webhook, and reconciliation checks pass.
-- Do not claim production migration readiness while docs still refer to 0030 as latest baseline.
+- Do not claim production migration readiness until the target Supabase project is verified through `0032_founder_revenue_validation.sql`.
 - Do not rely on missing `docs/PRODUCTION_SERVICE_INVENTORY.md` or `docs/PRODUCTION_LAUNCH_RUNBOOK.md` as operational source of truth.
 
 ## 必须修复项
 
 Before Beta traffic:
 
-1. Align production migration documentation from `0030` to `0032`.
-2. Confirm production Supabase has migrations `0001` through `0032` applied.
-3. Create or redirect the missing production docs:
+1. Confirm production Supabase has migrations `0001` through `0032` applied.
+2. Create or redirect the missing production docs:
    - `docs/PRODUCTION_SERVICE_INVENTORY.md`
    - `docs/PRODUCTION_LAUNCH_RUNBOOK.md`
-4. Configure production `.env.local` or secret store with required Supabase/admin/provider variables.
-5. Run production smoke test on the target VPS.
-6. Create a pre-Beta Supabase backup.
+3. Configure production `.env.local` or secret store with required Supabase/admin/provider variables.
+4. Run production smoke test on the target VPS.
+5. Create a pre-Beta Supabase backup.
 
 Before paid/commercial delivery:
 

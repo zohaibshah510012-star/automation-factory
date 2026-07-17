@@ -2,6 +2,16 @@
 
 ## 2026-07-17
 
+### Production Ops Preparation
+
+- Aligned production migration baseline documents to `0032_founder_revenue_validation.sql`.
+- Updated production diagnostics used by `/admin/checklist` to expect migration `0032` and verify `founder_customer_projects`.
+- Added `docs/PRODUCTION_DEPENDENCY_CHECKLIST.md` with required, conditional, and explicit non-dependencies.
+- Added `docs/PRODUCTION_SMOKE_TEST_PLAN.md` covering `/api/health`, `/admin/checklist`, `/brief`, `/dashboard`, `/create`, Text/Image/Video fallback, `/tasks/[id]`, `/assets`, `/dashboard/feedback`, and `/admin/revenue`.
+- Confirmed `.env.production.example` covers Supabase, AI provider keys, admin/auth config, storage, payment, webhook, cron, and proxy variables without committing `.env` files.
+- Preserved AI Runtime, Workflow Engine, Billing Core, Credits Core, and database schema.
+- Validation passed: `pnpm lint`, `pnpm exec tsc --noEmit`, and `pnpm build`.
+
 ### Production Isolation Assessment
 
 - Added `docs/AI_COMPANY_PRODUCTION_ISOLATION_REPORT.md`.

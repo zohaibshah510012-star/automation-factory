@@ -4,7 +4,7 @@ Last updated: 2026-07-17
 
 ## Current phase
 
-Founder Customer Acquisition - let real customers submit commercial requirements without entering Admin, then let the Founder turn those requirements into revenue validation projects.
+Production Launch Readiness - prepare Automation Factory for controlled real-customer Beta by aligning production docs, dependency gates, environment checks, and smoke test plans.
 
 The current product direction is to make Automation Factory usable as a first-session AI SaaS: a new invited user should be able to sign in, land on Dashboard, choose a workflow template, create a task, view the Task Result page, and submit feedback without engineering support.
 
@@ -22,15 +22,30 @@ Conclusion:
 
 Must-fix before Beta traffic:
 
-- Align production migration documentation from `0030` to `0032`.
 - Confirm production Supabase migrations are applied through `0032_founder_revenue_validation.sql`.
 - Configure production Supabase/admin/provider environment variables.
 - Create a pre-Beta Supabase backup.
 - Run production smoke tests for `/api/health`, `/admin/checklist`, `/brief`, workflow generation, assets, feedback, and `/admin/revenue`.
 
+## Production Launch Readiness update
+
+Production operations preparation is documented and aligned to migration `0032_founder_revenue_validation.sql`.
+
+Completed:
+
+- Production deployment, readiness, final launch, smoke test, and production checklist documents now use `0032` as the current migration baseline.
+- `/admin/checklist` production diagnostics now expect `0032_founder_revenue_validation.sql` and include `founder_customer_projects`.
+- Added `docs/PRODUCTION_DEPENDENCY_CHECKLIST.md`.
+- Added `docs/PRODUCTION_SMOKE_TEST_PLAN.md`.
+- Verified `.env.production.example` includes the required Supabase, AI provider, auth/admin, storage, payment, webhook, cron, and proxy variables without committing `.env` secrets.
+- Reconfirmed no current runtime dependency on afeng, MySQL, Redis, or AIXHub.
+- Local validation passed: `pnpm lint`, `pnpm exec tsc --noEmit`, and `pnpm build`.
+
+Current Production readiness: documentation and local build readiness are aligned; VPS/Supabase production verification is still required before inviting real customers.
+
 ## Latest verified commit before this report
 
-`8b280ee9273d58a953db0e522dce0744d90d64fa`
+`e948ff9b33a00dcbcc3cb43f48d408cc9d246233`
 
 ## Customer Brief Intake update
 
@@ -396,14 +411,11 @@ Important observed data:
 
 ## Supabase migration status
 
-Local migrations currently run from `0001` through `0030`.
+Local migrations currently run from `0001` through `0032`.
 
 Remote Supabase was found at `0026` during E2E. `0027_beta_experiment_tracking.sql` was applied with `supabase db push`.
 
-Remote now reports:
-
-- `0001` through `0029`: applied
-- `0030_founder_beta_run.sql`: applied locally and remotely for Founder Beta Run operations.
+Historical remote verification previously confirmed migrations through `0030`. Production must now be rechecked through `0032_founder_revenue_validation.sql` before Beta traffic.
 
 This fixed missing `feedback_submitted` product analytics events. Before `0027` was applied, feedback rows were saved but the analytics event was rejected by the older `product_events_event_name_check` constraint.
 
@@ -414,7 +426,8 @@ Latest migration sync:
 - `0029_beta_operations.sql` adds `beta_user_statuses` for manual Beta cohort status tracking (`invited`, `active`, `completed`, `churned`) with admin-only RLS.
 - `0029_beta_operations.sql` has been pushed to the target Supabase project and confirmed with `supabase migration list`.
 - `0030_founder_beta_run.sql` adds Founder Beta Run cohort tracking and review notes with admin-only RLS.
-- `0030_founder_beta_run.sql` has been pushed to the target Supabase project and confirmed with `supabase migration list`.
+- `0031_founder_beta_data_cleanup.sql` adds Founder cohort data cleanup and duration tracking.
+- `0032_founder_revenue_validation.sql` adds Founder revenue validation customer project tracking.
 
 ## Provider status
 
@@ -516,7 +529,7 @@ Beta Operations readiness status:
 - Admin can manually mark Beta users as `invited`, `active`, `completed`, or `churned`; updates are written to `beta_user_statuses` and audited in `audit_logs`.
 - Activation metrics now include signup completed, workspace created, first generation started, first generation completed, feedback submitted, and average Time To First Value.
 - Feedback Intelligence now groups feedback into content quality, generation speed, usability, use case, and payment-intent signals, with average score, result quality, recommendation rate, open feedback count, and common issue labels.
-- Production diagnostics and checklists now expect `0030_founder_beta_run.sql`.
+- Production diagnostics and checklists now expect `0032_founder_revenue_validation.sql`.
 - Generated asset route no longer emits the previous Turbopack NFT tracing warning during `pnpm build`.
 
 Short Drama MVP is now usable as a complete Beta content-production path:

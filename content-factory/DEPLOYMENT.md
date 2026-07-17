@@ -1,6 +1,6 @@
 # Automation Factory Deployment Guide
 
-Production baseline: migration `0001_content_factory.sql` through `0030_founder_beta_run.sql`.
+Production baseline: migration `0001_content_factory.sql` through `0032_founder_revenue_validation.sql`.
 
 ## 1. Build verification
 
@@ -50,7 +50,7 @@ supabase migration list
 Expected local latest migration:
 
 ```text
-0030_founder_beta_run.sql
+0032_founder_revenue_validation.sql
 ```
 
 Key tables/RPCs expected after migration:
@@ -74,6 +74,7 @@ Key tables/RPCs expected after migration:
 - `beta_cohorts`
 - `beta_cohort_members`
 - `beta_review_notes`
+- `founder_customer_projects`
 - `workspaces`
 - `workspace_members`
 - `grant_subscription_credits`
