@@ -77,6 +77,31 @@ Blocked:
 
 Production readiness status: not ready for controlled Beta until the backup, VPS runtime, environment, and smoke test blockers are resolved on the production server.
 
+## Production Launch Preparation update
+
+Production launch preparation is now documented for operator execution. This is a deployment-readiness step, not product feature development.
+
+Added:
+
+- `docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md` for VPS, Node runtime, PM2/Docker, Nginx, SSL, environment variables, Supabase backup, and migration verification.
+- `docs/PRODUCTION_LAUNCH_RUNBOOK.md` for clone, dependency install, environment setup, database check, backup, build, PM2/Docker start, Nginx/SSL, health check, and rollback.
+- `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md` for the final production pass/fail checks covering `/`, auth entry, `/dashboard`, `/create`, Text generation, Image generation, Video preview, Assets, Feedback, Customer Brief, and Admin operations.
+
+Current launch gate:
+
+- Product Beta capability remains complete.
+- Production deployment verification remains the current blocker.
+- No business code, AI Runtime, Workflow Engine, Billing Core, Credits Core, or database schema changes were made in this preparation step.
+
+Must complete on the production VPS before inviting controlled customers:
+
+1. Create or confirm the pre-Beta Supabase backup.
+2. Configure production environment variables without committing secrets.
+3. Start PM2 or Docker runtime.
+4. Configure Nginx and SSL.
+5. Verify remote migrations through `0032_founder_revenue_validation.sql`.
+6. Execute `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md`.
+
 ## Latest verified commit before this report
 
 `662d116e29a0b00066012a142fe3168c0af9606b`

@@ -2,6 +2,14 @@
 
 ## 2026-07-17
 
+### Production Launch Preparation
+
+- Added `docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md` with VPS, Node runtime, PM2/Docker, Nginx, SSL, environment variable, Supabase backup, and migration verification gates.
+- Added `docs/PRODUCTION_LAUNCH_RUNBOOK.md` with clone, dependency install, env configuration, database check, backup, build, PM2/Docker start, Nginx/SSL, health check, and rollback steps.
+- Added `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md` covering `/`, auth entry, `/dashboard`, `/create`, Text generation, Image generation, Video preview, Assets, Feedback, Customer Brief, and Admin checks.
+- Updated `docs/PROJECT_STATUS.md` to clarify that Beta product capability is complete and production deployment verification remains the current launch blocker.
+- Preserved AI Runtime, Workflow Engine, Billing Core, Credits Core, and database schema.
+
 ### VPS Production Verification
 
 - Verified remote Supabase migrations are aligned from `0001` through `0032`.

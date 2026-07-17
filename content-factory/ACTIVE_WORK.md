@@ -17,6 +17,9 @@ Production verification for controlled real-customer Beta.
 - Aligned production migration baseline references to `0032_founder_revenue_validation.sql`.
 - Added `docs/PRODUCTION_DEPENDENCY_CHECKLIST.md`.
 - Added `docs/PRODUCTION_SMOKE_TEST_PLAN.md`.
+- Added `docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md`.
+- Added `docs/PRODUCTION_LAUNCH_RUNBOOK.md`.
+- Added `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md`.
 - Verified remote Supabase migrations `0001` through `0032` with `supabase migration list`.
 - Verified required Supabase tables for revenue, beta, credits, usage, tasks, and assets are reachable.
 - Confirmed no runtime dependency was found on afeng MySQL.
@@ -45,8 +48,9 @@ Production verification for controlled real-customer Beta.
 
 Run the production VPS verification pass from a machine with production access:
 
-1. Configure production environment variables on the VPS.
-2. Create or confirm a pre-Beta Supabase backup from Supabase Dashboard or a machine with Docker/`pg_dump`/`DATABASE_URL`.
-3. Start PM2 or Docker runtime behind Nginx and SSL.
-4. Run `/api/health`, `/admin/checklist`, `/brief`, workflow generation, assets, feedback, and `/admin/revenue` smoke tests.
-5. Invite the first 1-2 controlled Beta users only after the smoke test passes.
+1. Follow `docs/PRODUCTION_DEPLOYMENT_CHECKLIST.md`.
+2. Execute `docs/PRODUCTION_LAUNCH_RUNBOOK.md` on the production VPS.
+3. Create or confirm a pre-Beta Supabase backup from Supabase Dashboard or a machine with Docker/`pg_dump`/`DATABASE_URL`.
+4. Start PM2 or Docker runtime behind Nginx and SSL.
+5. Run `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md`.
+6. Invite the first 1-2 controlled Beta users only after the smoke test passes.
