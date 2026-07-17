@@ -102,6 +102,30 @@ Must complete on the production VPS before inviting controlled customers:
 5. Verify remote migrations through `0032_founder_revenue_validation.sql`.
 6. Execute `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md`.
 
+## Beta P0 Execution status
+
+Closed Beta remains **NOT READY**.
+
+The current P0 blockers are now tracked in `docs/BETA_P0_EXECUTION_STATUS.md`.
+
+Blocked:
+
+- Auth/Beta Access: production invite-only auth flow has not been executed and evidenced on the production domain.
+- Backup/PITR Restore: pre-Beta backup, PITR status, and restore validation evidence are missing.
+
+Closed Beta gate:
+
+- [ ] Auth Ready
+- [ ] Backup Ready
+- [ ] Restore Verified
+- [ ] Production Smoke Test Passed
+- [ ] Beta User Created
+
+Execution note:
+
+- `docs/BETA_P0_EXECUTION_CHECKLIST.md` was requested as input but is not present in the repository.
+- No business code, AI Runtime, Workflow Engine, Billing Core, Credits Core, or database schema changes were made.
+
 ## Latest verified commit before this report
 
 `662d116e29a0b00066012a142fe3168c0af9606b`

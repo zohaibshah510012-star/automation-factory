@@ -1,0 +1,160 @@
+# Beta P0 Execution Status
+
+Last updated: 2026-07-17
+
+Current gate: **Closed Beta = NOT READY**
+
+Scope: execution status only. No business code, AI Runtime, Workflow Engine, Billing Core, Credits Core, or database schema changes were made.
+
+Source note: `docs/BETA_P0_EXECUTION_CHECKLIST.md` was requested as input but is not present in the repository at this execution time. This status file is based on `docs/PROJECT_STATUS.md`, `ACTIVE_WORK.md`, `CHANGELOG.md`, production readiness docs, environment template review, and the user-provided P0 gate requirements.
+
+## P0 summary
+
+| Area | Status | Blocking reason |
+| --- | --- | --- |
+| Auth/Beta Access | BLOCKED | Production invite/auth gate has not been executed and evidenced on the production domain. |
+| Backup/PITR Restore | BLOCKED | Pre-Beta backup and restore/PITR validation evidence is missing. |
+| Closed Beta Gate | BLOCKED | Required P0 evidence is incomplete. |
+
+## Auth/Beta Access
+
+Status: **BLOCKED**
+
+### Owner
+
+- Required owner: Founder / production operator with access to production domain, Supabase Auth, `ADMIN_EMAILS`, and Beta invite creation.
+- Current execution owner in this repository pass: Codex documentation/operator-prep only.
+
+### Current configuration
+
+Observed from `.env.production.example` and current code references:
+
+- `BETA_INVITE_ONLY=true` is present in the production environment template.
+- `ADMIN_EMAILS=founder@your-domain.com` placeholder is present in the production environment template.
+- `/api/auth/bootstrap` reads `ADMIN_EMAILS`.
+- `/api/auth/bootstrap` defaults invite-only behavior to enabled unless `BETA_INVITE_ONLY=false`.
+- `/api/auth/bootstrap` requires an invite code for non-admin signup when invite-only mode is active.
+- `/beta` page exists as the visible Beta invite entry.
+- `/api/beta/invites/verify` exists for invite verification.
+
+Current gap:
+
+- Production real values are not verified in this workspace.
+- Production domain auth redirect URLs are not verified.
+- Production admin account is not verified.
+- Production invite creation and consumption have not been evidenced.
+- A `docs/BETA_P0_EXECUTION_CHECKLIST.md` source checklist was requested but does not exist in the repository.
+
+### Required execution actions
+
+1. Configure production `ADMIN_EMAILS` with the actual Founder/admin email.
+2. Confirm `BETA_INVITE_ONLY=true` in the production runtime environment.
+3. Confirm Supabase Auth redirect URLs include the production domain and Beta entry path.
+4. Login as admin on production.
+5. Create a Beta invite from the production Admin Beta flow.
+6. Open the invite link as a non-admin test user.
+7. Complete signup/login.
+8. Run `/api/auth/bootstrap`.
+9. Confirm:
+   - profile is created
+   - workspace is created
+   - invite is consumed
+   - non-invited user cannot bypass the Beta gate
+
+### Acceptance evidence required
+
+- Production domain used for the test.
+- Deployed commit ID.
+- Admin email used, with secrets redacted.
+- Invite code status before and after consumption.
+- Successful `/api/auth/bootstrap` response or browser/API evidence.
+- Database evidence that the test user's profile/workspace exists.
+- Evidence that the invite status changed to consumed/used.
+- Evidence that an uninvited user is blocked.
+- Screenshot or copied result from the relevant Admin page with sensitive data redacted.
+
+## Backup/PITR Restore
+
+Status: **BLOCKED**
+
+### Backup owner
+
+- Required owner: Founder / production operator with Supabase project owner access.
+- Restore verifier: production operator who can safely run restore validation in a non-destructive environment or Supabase-managed restore workflow.
+- Current execution owner in this repository pass: Codex documentation/operator-prep only.
+
+### Current status
+
+Known from prior production verification records:
+
+- Production migrations were previously verified through `0032_founder_revenue_validation.sql`.
+- Required production tables were previously reachable through Supabase service role checks.
+- A pre-Beta backup was not created from the local workstation.
+- `supabase db dump` was blocked because Docker is not installed on the workstation.
+- `pg_dump` was unavailable on the workstation.
+- `DATABASE_URL` was not configured on the workstation.
+- `docs/BACKUP.md` and `docs/RESTORE.md` define backup and restore procedures.
+
+Current gap:
+
+- No backup artifact/timestamp is recorded for the production Beta launch gate.
+- No PITR status evidence is recorded.
+- No restore verification evidence is recorded.
+- Storage backup status is not verified for production asset durability.
+
+### Restore plan
+
+Preferred production-safe sequence:
+
+1. Confirm Supabase project ref for production.
+2. Create a pre-Beta database backup from Supabase Dashboard or a secure machine with Docker/`pg_dump`/`DATABASE_URL`.
+3. Record backup timestamp, method, project ref, release commit, and storage location.
+4. Confirm whether Supabase PITR is enabled for the production project and record the retention window.
+5. Verify restore procedure without overwriting production data:
+   - use Supabase-managed restore preview if available, or
+   - restore the dump into a separate validation database/project, or
+   - document Supabase Dashboard restore path and run a controlled non-production restore drill.
+6. Validate restored data includes:
+   - Auth users metadata required for login
+   - public schema tables
+   - migrations through `0032`
+   - `founder_customer_projects`
+   - Beta tables
+   - Credits and usage tables
+   - task and asset metadata
+7. If Supabase Storage is used for production assets, export/verify bucket backup and object count.
+
+### Acceptance evidence required
+
+- Backup method used.
+- Backup timestamp.
+- Supabase project ref.
+- Backup location with secrets redacted.
+- PITR enabled/disabled status and retention window.
+- Restore validation target.
+- Restore validation result.
+- Post-restore checks:
+  - `/api/health`
+  - `/admin/checklist`
+  - user login/bootstrap
+  - Credits consistency
+  - task/assets metadata availability
+- Storage backup evidence if storage is used.
+
+## Closed Beta Gate
+
+- [ ] Auth Ready
+- [ ] Backup Ready
+- [ ] Restore Verified
+- [ ] Production Smoke Test Passed
+- [ ] Beta User Created
+
+Gate decision: **Do not invite Closed Beta users yet.**
+
+## Next execution order
+
+1. Assign Auth/Beta Access owner and execute the production invite flow.
+2. Assign Backup owner and create a pre-Beta Supabase backup.
+3. Verify PITR/restore path without destructive production changes.
+4. Run `docs/PRODUCTION_SMOKE_TEST_CHECKLIST.md` on the production domain.
+5. Create exactly one controlled Beta user only after the first four gates pass.
